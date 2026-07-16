@@ -8,6 +8,7 @@ from src.market.binance_client import BinanceMarketClient
 from src.market.event_data import CandlesReceivedEvent
 from src.market.events import MARKET_CANDLES_RECEIVED
 from src.services.candle_storage_handler import CandleStorageHandler
+from src.services.indicator_engine import IndicatorEngine
 
 
 class AegisApplication:
@@ -39,10 +40,16 @@ class AegisApplication:
             repository.create_table()
 
             storage_handler = CandleStorageHandler(repository)
+            indicator_engine = IndicatorEngine()
 
             self.event_bus.subscribe(
                 MARKET_CANDLES_RECEIVED,
                 storage_handler.handle,
+            )
+
+            self.event_bus.subscribe(
+                MARKET_CANDLES_RECEIVED,
+                indicator_engine.handle,
             )
 
             candles = self.market.get_klines(
@@ -66,5 +73,6 @@ class AegisApplication:
             print("📊 Mercado conectado.")
             print(f"Candles recebidos: {len(candles)}")
             print("Evento publicado com sucesso.")
+
         finally:
             connection.close()
