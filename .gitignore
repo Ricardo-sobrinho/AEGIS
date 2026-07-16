@@ -1,6 +1,12 @@
+# Ambiente virtual
+.venv/
+
 # Cache do Python
 __pycache__/
 *.pyc
 
-# Logs gerados pela aplicação
+# Cache dos testes
+.pytest_cache/
+
+# Logs locais
 logs/*.log
