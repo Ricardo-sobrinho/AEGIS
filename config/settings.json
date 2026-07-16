@@ -1,0 +1,7 @@
+{
+    "app_name": "AEGIS",
+    "version": "0.6.0",
+    "environment": "development",
+    "developer": "Ricardo Silva",
+    "paper_trading": true
+}

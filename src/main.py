@@ -1,19 +1,27 @@
 from core.banner import show_banner
 from core.logger import configure_logger
+from core.settings import load_settings
 
 
 def main() -> None:
-    show_banner()
-
     logger = configure_logger()
 
-    logger.info("Inicializando sistema")
-    logger.info("Sistema carregado")
-    logger.info("Sistema de logs iniciado")
+    try:
+        settings = load_settings()
+    except (FileNotFoundError, ValueError) as error:
+        logger.critical("Falha ao carregar configurações: %s", error)
+        return
+
+    show_banner()
+
+    logger.info("Inicializando %s", settings["app_name"])
+    logger.info("Versão: %s", settings["version"])
+    logger.info("Ambiente: %s", settings["environment"])
+    logger.info("Paper trading: %s", settings["paper_trading"])
 
     print()
-    print("Bem-vindo, Ricardo.")
-    print("AEGIS pronta para iniciar.")
+    print(f"Bem-vindo, {settings['developer']}.")
+    print(f"{settings['app_name']} pronta para iniciar.")
 
 
 if __name__ == "__main__":
