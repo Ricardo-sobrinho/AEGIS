@@ -1,14 +1,15 @@
 from core.banner import show_banner
+from core.logger import configure_logger
 
 
-def main():
+def main() -> None:
     show_banner()
 
-    print("🚀 Inicializando sistema...\n")
+    logger = configure_logger()
 
-    print("✔ Sistema carregado")
-    print("✔ Configuração carregada")
-    print("✔ Logs iniciados")
+    logger.info("Inicializando sistema")
+    logger.info("Sistema carregado")
+    logger.info("Sistema de logs iniciado")
 
     print()
     print("Bem-vindo, Ricardo.")
