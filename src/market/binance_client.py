@@ -2,6 +2,8 @@ from typing import Any
 
 import httpx
 
+from models.candle import Candle
+
 
 class BinanceMarketClient:
     def __init__(
@@ -17,7 +19,7 @@ class BinanceMarketClient:
         symbol: str,
         interval: str,
         limit: int = 5,
-    ) -> list[list[Any]]:
+    ) -> list[Candle]:
         endpoint = "/api/v3/klines"
 
         parameters = {
@@ -30,12 +32,31 @@ class BinanceMarketClient:
             base_url=self.base_url,
             timeout=self.timeout,
         ) as client:
-            response = client.get(endpoint, params=parameters)
+            response = client.get(
+                endpoint,
+                params=parameters,
+            )
             response.raise_for_status()
 
-        data = response.json()
+        data: Any = response.json()
 
         if not isinstance(data, list):
-            raise ValueError("Resposta inesperada da API de mercado")
+            raise ValueError(
+                "Resposta inesperada da API de mercado"
+            )
 
-        return data
+        candles: list[Candle] = []
+
+        for item in data:
+            candle = Candle(
+                open_time=int(item[0]),
+                open_price=float(item[1]),
+                high_price=float(item[2]),
+                low_price=float(item[3]),
+                close_price=float(item[4]),
+                volume=float(item[5]),
+            )
+
+            candles.append(candle)
+
+        return candles
