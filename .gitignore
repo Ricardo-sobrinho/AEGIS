@@ -10,3 +10,6 @@ __pycache__/
 
 # Logs locais
 logs/*.log
+
+# Banco de dados local
+data/*.db
