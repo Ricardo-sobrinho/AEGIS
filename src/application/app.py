@@ -6,9 +6,14 @@ from src.database.candle_repository import CandleRepository
 from src.database.connection import get_database_connection
 from src.market.binance_client import BinanceMarketClient
 from src.market.event_data import CandlesReceivedEvent
-from src.market.events import MARKET_CANDLES_RECEIVED
+from src.market.events import (
+    MARKET_CANDLES_RECEIVED,
+    STRATEGY_SIGNAL_GENERATED,
+)
 from src.services.candle_storage_handler import CandleStorageHandler
 from src.services.indicator_engine import IndicatorEngine
+from src.services.risk_manager import RiskManager
+from src.services.strategy_engine import StrategyEngine
 
 
 class AegisApplication:
@@ -41,6 +46,8 @@ class AegisApplication:
 
             storage_handler = CandleStorageHandler(repository)
             indicator_engine = IndicatorEngine()
+            strategy_engine = StrategyEngine(self.event_bus)
+            risk_manager = RiskManager()
 
             self.event_bus.subscribe(
                 MARKET_CANDLES_RECEIVED,
@@ -50,6 +57,16 @@ class AegisApplication:
             self.event_bus.subscribe(
                 MARKET_CANDLES_RECEIVED,
                 indicator_engine.handle,
+            )
+
+            self.event_bus.subscribe(
+                MARKET_CANDLES_RECEIVED,
+                strategy_engine.handle,
+            )
+
+            self.event_bus.subscribe(
+                STRATEGY_SIGNAL_GENERATED,
+                risk_manager.handle,
             )
 
             candles = self.market.get_klines(
