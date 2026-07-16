@@ -1,2 +1,6 @@
-# Logs gerados durante a execução
+# Cache do Python
+__pycache__/
+*.pyc
+
+# Logs gerados pela aplicação
 logs/*.log
