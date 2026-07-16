@@ -1,6 +1,6 @@
 import sqlite3
 
-from models.candle import Candle
+from src.models.candle import Candle
 
 
 class CandleRepository:
