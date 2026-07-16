@@ -2,7 +2,7 @@ from typing import Any
 
 import httpx
 
-from models.candle import Candle
+from src.models.candle import Candle
 
 
 class BinanceMarketClient:

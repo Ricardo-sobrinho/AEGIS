@@ -1,0 +1,1 @@
+MARKET_CANDLES_RECEIVED = "market.candles_received"

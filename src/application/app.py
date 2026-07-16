@@ -1,9 +1,13 @@
-from core.banner import show_banner
-from core.logger import configure_logger
-from core.settings import load_settings
-from database.candle_repository import CandleRepository
-from database.connection import get_database_connection
-from market.binance_client import BinanceMarketClient
+from src.core.banner import show_banner
+from src.core.event_bus import EventBus
+from src.core.logger import configure_logger
+from src.core.settings import load_settings
+from src.database.candle_repository import CandleRepository
+from src.database.connection import get_database_connection
+from src.market.binance_client import BinanceMarketClient
+from src.market.event_data import CandlesReceivedEvent
+from src.market.events import MARKET_CANDLES_RECEIVED
+from src.services.candle_storage_handler import CandleStorageHandler
 
 
 class AegisApplication:
@@ -11,6 +15,7 @@ class AegisApplication:
         self.logger = configure_logger()
         self.settings = load_settings()
         self.market = BinanceMarketClient()
+        self.event_bus = EventBus()
 
     def start(self) -> None:
         show_banner()
@@ -27,37 +32,39 @@ class AegisApplication:
         symbol = "BTCUSDT"
         interval = "1m"
 
-        candles = self.market.get_klines(
-            symbol=symbol,
-            interval=interval,
-            limit=5,
-        )
-
         connection = get_database_connection()
 
         try:
             repository = CandleRepository(connection)
             repository.create_table()
 
-            inserted_records = repository.save_many(
+            storage_handler = CandleStorageHandler(repository)
+
+            self.event_bus.subscribe(
+                MARKET_CANDLES_RECEIVED,
+                storage_handler.handle,
+            )
+
+            candles = self.market.get_klines(
+                symbol=symbol,
+                interval=interval,
+                limit=5,
+            )
+
+            event = CandlesReceivedEvent(
                 symbol=symbol,
                 interval=interval,
                 candles=candles,
             )
+
+            self.event_bus.publish(
+                MARKET_CANDLES_RECEIVED,
+                event,
+            )
+
+            print()
+            print("📊 Mercado conectado.")
+            print(f"Candles recebidos: {len(candles)}")
+            print("Evento publicado com sucesso.")
         finally:
             connection.close()
-
-        print()
-        print("📊 Mercado conectado.")
-        print(f"Candles recebidos: {len(candles)}")
-        print(f"Candles novos salvos: {inserted_records}")
-        print()
-
-        for candle in candles:
-            print(
-                f"Abertura: {candle.open_price:.2f} | "
-                f"Máxima: {candle.high_price:.2f} | "
-                f"Mínima: {candle.low_price:.2f} | "
-                f"Fechamento: {candle.close_price:.2f} | "
-                f"Volume: {candle.volume:.8f}"
-            )
