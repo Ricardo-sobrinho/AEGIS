@@ -1,0 +1,1 @@
+PERFORMANCE_UPDATED = "performance.updated"

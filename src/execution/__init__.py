@@ -1,0 +1,1 @@
+"""Domínio responsável pela execução de ordens da AEGIS."""
