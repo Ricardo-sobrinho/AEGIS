@@ -1,3 +1,5 @@
+from math import isfinite
+
 from src.core.event_bus import EventBus
 from src.execution.event_data import TradeRejectedEvent
 from src.execution.events import (
@@ -12,13 +14,30 @@ from src.trading.trade_event import TradeEvent
 
 
 class PortfolioEngine:
+    """
+    Application service responsible for portfolio state transitions.
+
+    PortfolioEngine is the only component authorized to create, update,
+    or remove positions and to modify the portfolio cash balance and
+    realized profit and loss.
+    """
+
     def __init__(
         self,
         event_bus: EventBus,
         initial_balance: float = 100000.0,
     ) -> None:
-        self.event_bus = event_bus
+        if not isfinite(initial_balance):
+            raise ValueError(
+                "O saldo inicial deve ser um número finito"
+            )
 
+        if initial_balance < 0:
+            raise ValueError(
+                "O saldo inicial não pode ser negativo"
+            )
+
+        self.event_bus = event_bus
         self.portfolio = Portfolio(
             cash=initial_balance,
         )
@@ -27,6 +46,13 @@ class PortfolioEngine:
         self,
         trade: TradeEvent,
     ) -> None:
+        """
+        Process a trade and publish the corresponding domain events.
+
+        Successful operations publish TRADE_EXECUTED followed by
+        PORTFOLIO_UPDATED. Rejected operations publish only
+        TRADE_REJECTED.
+        """
         if trade.signal == Signal.BUY:
             executed, reason = self._handle_buy(trade)
 
@@ -62,17 +88,13 @@ class PortfolioEngine:
         self,
         trade: TradeEvent,
     ) -> tuple[bool, str]:
-        if trade.quantity <= 0:
-            return (
-                False,
-                "A quantidade da compra deve ser maior que zero",
-            )
+        validation_error = self._validate_trade_values(
+            trade=trade,
+            operation_name="compra",
+        )
 
-        if trade.price <= 0:
-            return (
-                False,
-                "O preço da compra deve ser maior que zero",
-            )
+        if validation_error is not None:
+            return False, validation_error
 
         total_cost = trade.quantity * trade.price
 
@@ -86,17 +108,13 @@ class PortfolioEngine:
             trade.symbol
         )
 
-        if existing_position is not None:
-            return (
-                False,
-                "Já existe uma posição aberta para este ativo",
+        if existing_position is None:
+            self._open_position(trade)
+        else:
+            self._increase_position(
+                position=existing_position,
+                trade=trade,
             )
-
-        self.portfolio.positions[trade.symbol] = Position(
-            symbol=trade.symbol,
-            quantity=trade.quantity,
-            average_price=trade.price,
-        )
 
         self.portfolio.cash -= total_cost
 
@@ -109,17 +127,13 @@ class PortfolioEngine:
         self,
         trade: TradeEvent,
     ) -> tuple[bool, str]:
-        if trade.quantity <= 0:
-            return (
-                False,
-                "A quantidade da venda deve ser maior que zero",
-            )
+        validation_error = self._validate_trade_values(
+            trade=trade,
+            operation_name="venda",
+        )
 
-        if trade.price <= 0:
-            return (
-                False,
-                "O preço da venda deve ser maior que zero",
-            )
+        if validation_error is not None:
+            return False, validation_error
 
         existing_position = self.portfolio.positions.get(
             trade.symbol
@@ -137,18 +151,106 @@ class PortfolioEngine:
                 "Quantidade de venda maior que a posição atual",
             )
 
-        sale_value = trade.quantity * trade.price
-
-        existing_position.quantity -= trade.quantity
-        self.portfolio.cash += sale_value
-
-        if existing_position.quantity <= 0:
-            del self.portfolio.positions[trade.symbol]
+        self._reduce_position(
+            position=existing_position,
+            trade=trade,
+        )
 
         return (
             True,
             "Venda executada com sucesso",
         )
+
+    def _open_position(
+        self,
+        trade: TradeEvent,
+    ) -> None:
+        self.portfolio.positions[trade.symbol] = Position(
+            symbol=trade.symbol,
+            quantity=trade.quantity,
+            average_price=trade.price,
+            last_price=trade.price,
+        )
+
+    def _increase_position(
+        self,
+        position: Position,
+        trade: TradeEvent,
+    ) -> None:
+        current_invested_value = (
+            position.quantity * position.average_price
+        )
+        additional_invested_value = (
+            trade.quantity * trade.price
+        )
+        updated_quantity = (
+            position.quantity + trade.quantity
+        )
+
+        updated_average_price = (
+            current_invested_value
+            + additional_invested_value
+        ) / updated_quantity
+
+        position.quantity = updated_quantity
+        position.average_price = updated_average_price
+        position.last_price = trade.price
+
+    def _reduce_position(
+        self,
+        position: Position,
+        trade: TradeEvent,
+    ) -> None:
+        sale_value = trade.quantity * trade.price
+
+        realized_pnl = (
+            trade.price - position.average_price
+        ) * trade.quantity
+
+        remaining_quantity = (
+            position.quantity - trade.quantity
+        )
+
+        self.portfolio.cash += sale_value
+        self.portfolio.realized_pnl += realized_pnl
+
+        if remaining_quantity == 0:
+            del self.portfolio.positions[trade.symbol]
+            return
+
+        position.quantity = remaining_quantity
+        position.last_price = trade.price
+
+    @staticmethod
+    def _validate_trade_values(
+        trade: TradeEvent,
+        operation_name: str,
+    ) -> str | None:
+        if not isfinite(trade.quantity):
+            return (
+                f"A quantidade da {operation_name} "
+                "deve ser um número finito"
+            )
+
+        if trade.quantity <= 0:
+            return (
+                f"A quantidade da {operation_name} "
+                "deve ser maior que zero"
+            )
+
+        if not isfinite(trade.price):
+            return (
+                f"O preço da {operation_name} "
+                "deve ser um número finito"
+            )
+
+        if trade.price <= 0:
+            return (
+                f"O preço da {operation_name} "
+                "deve ser maior que zero"
+            )
+
+        return None
 
     def _reject_trade(
         self,
@@ -178,6 +280,26 @@ class PortfolioEngine:
             f"Saldo disponível: "
             f"{self.portfolio.cash:.2f}"
         )
+        print(
+            f"Lucro realizado.: "
+            f"{self.portfolio.realized_pnl:.2f}"
+        )
+        print(
+            f"Valor investido.: "
+            f"{self.portfolio.invested_value:.2f}"
+        )
+        print(
+            f"Valor de mercado: "
+            f"{self.portfolio.market_value:.2f}"
+        )
+        print(
+            f"Lucro não realiz: "
+            f"{self.portfolio.unrealized_pnl:.2f}"
+        )
+        print(
+            f"Patrimônio......: "
+            f"{self.portfolio.equity:.2f}"
+        )
 
         if not self.portfolio.positions:
             print("Posições abertas: nenhuma")
@@ -189,6 +311,8 @@ class PortfolioEngine:
             print(
                 f"- {position.symbol} | "
                 f"Quantidade: {position.quantity} | "
-                f"Preço médio: "
-                f"{position.average_price:.2f}"
+                f"Preço médio: {position.average_price:.2f} | "
+                f"Último preço: {position.last_price:.2f} | "
+                f"PnL não realizado: "
+                f"{position.unrealized_pnl:.2f}"
             )
