@@ -47,17 +47,34 @@ class PortfolioEngine:
         trade: TradeEvent,
     ) -> None:
         """
-        Process a trade and publish the corresponding domain events.
+        Process a trade and publish the corresponding events.
 
         Successful operations publish TRADE_EXECUTED followed by
         PORTFOLIO_UPDATED. Rejected operations publish only
         TRADE_REJECTED.
         """
+        normalized_symbol = self._normalize_symbol(
+            trade.symbol
+        )
+
+        if normalized_symbol is None:
+            self._reject_trade(
+                trade=trade,
+                reason="O símbolo do ativo não pode estar vazio",
+            )
+            return
+
         if trade.signal == Signal.BUY:
-            executed, reason = self._handle_buy(trade)
+            executed, reason = self._handle_buy(
+                trade=trade,
+                symbol=normalized_symbol,
+            )
 
         elif trade.signal == Signal.SELL:
-            executed, reason = self._handle_sell(trade)
+            executed, reason = self._handle_sell(
+                trade=trade,
+                symbol=normalized_symbol,
+            )
 
         else:
             executed = False
@@ -87,6 +104,7 @@ class PortfolioEngine:
     def _handle_buy(
         self,
         trade: TradeEvent,
+        symbol: str,
     ) -> tuple[bool, str]:
         validation_error = self._validate_trade_values(
             trade=trade,
@@ -105,11 +123,14 @@ class PortfolioEngine:
             )
 
         existing_position = self.portfolio.positions.get(
-            trade.symbol
+            symbol
         )
 
         if existing_position is None:
-            self._open_position(trade)
+            self._open_position(
+                trade=trade,
+                symbol=symbol,
+            )
         else:
             self._increase_position(
                 position=existing_position,
@@ -126,6 +147,7 @@ class PortfolioEngine:
     def _handle_sell(
         self,
         trade: TradeEvent,
+        symbol: str,
     ) -> tuple[bool, str]:
         validation_error = self._validate_trade_values(
             trade=trade,
@@ -136,7 +158,7 @@ class PortfolioEngine:
             return False, validation_error
 
         existing_position = self.portfolio.positions.get(
-            trade.symbol
+            symbol
         )
 
         if existing_position is None:
@@ -154,6 +176,7 @@ class PortfolioEngine:
         self._reduce_position(
             position=existing_position,
             trade=trade,
+            symbol=symbol,
         )
 
         return (
@@ -164,9 +187,10 @@ class PortfolioEngine:
     def _open_position(
         self,
         trade: TradeEvent,
+        symbol: str,
     ) -> None:
-        self.portfolio.positions[trade.symbol] = Position(
-            symbol=trade.symbol,
+        self.portfolio.positions[symbol] = Position(
+            symbol=symbol,
             quantity=trade.quantity,
             average_price=trade.price,
             last_price=trade.price,
@@ -200,6 +224,7 @@ class PortfolioEngine:
         self,
         position: Position,
         trade: TradeEvent,
+        symbol: str,
     ) -> None:
         sale_value = trade.quantity * trade.price
 
@@ -215,11 +240,22 @@ class PortfolioEngine:
         self.portfolio.realized_pnl += realized_pnl
 
         if remaining_quantity == 0:
-            del self.portfolio.positions[trade.symbol]
+            del self.portfolio.positions[symbol]
             return
 
         position.quantity = remaining_quantity
         position.last_price = trade.price
+
+    @staticmethod
+    def _normalize_symbol(
+        symbol: str,
+    ) -> str | None:
+        normalized_symbol = symbol.strip().upper()
+
+        if not normalized_symbol:
+            return None
+
+        return normalized_symbol
 
     @staticmethod
     def _validate_trade_values(
