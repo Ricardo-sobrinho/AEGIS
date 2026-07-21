@@ -1,90 +1,197 @@
-# Changelog
+# CHANGELOG
 
-Todas as alterações relevantes da plataforma **AEGIS (Adaptive Evolutionary Global Intelligence System)** são registradas neste documento.
+Todas as mudanças relevantes do projeto AEGIS serão documentadas neste arquivo.
 
----
-
-# [0.7.0] - 2026-07-18
-
-## 🎉 Marco da Versão
-
-Implementação da **Execution Architecture**, estabelecendo a separação definitiva entre Estratégia, Risco, Execução, Carteira e Performance.
+O versionamento segue o conceito de evolução incremental da arquitetura do sistema, utilizando RFCs (Request for Comments) para registrar decisões técnicas importantes.
 
 ---
 
-## ✨ Adicionado
+# Versionamento
 
-### Nova camada de execução
+- Status Atual: **v0.9.0**
+- Arquitetura: Clean Architecture + SOLID + Event Driven Architecture
+- Linguagem: Python 3.13
+- Status: Em Desenvolvimento
 
-- Criação do módulo `execution`
-- Implementação do `ExecutionEngine`
-- Novo fluxo de execução baseado em eventos
+---
 
-### Novos eventos
+# v0.9.0 — RFC-004 Bankroll Engine
 
-- `TRADE_REQUESTED`
-- `TRADE_EXECUTED`
-- `TRADE_REJECTED`
+Data: Julho/2026
 
-### Portfolio Engine
+## Objetivo
 
-- Controle de saldo
-- Controle de posições
-- Atualização automática da carteira
-- Validação final das operações
+Implementar um módulo financeiro desacoplado responsável pelo gerenciamento da banca da AEGIS para operações de contratos de tempo fixo (Binary Options), mantendo todo o fluxo financeiro centralizado em um único agregado.
 
-### Performance Engine
+## Adicionado
 
-- Equity
-- PnL
-- ROI
-- Valor da carteira
+### Bankroll
+
+- BankrollEngine
+- BankrollStatistics
+- BankrollTransaction
+- BankrollTransactionFactory
+
+### Funcionalidades
+
+- Controle de saldo disponível
+- Controle de saldo reservado
+- Ledger financeiro imutável
+- Reserva de stake
+- Liberação de stake
+- Liquidação WIN
+- Liquidação LOSS
+- Liquidação DRAW
+- Depósitos
+- Saques
+- Ajustes de crédito
+- Ajustes de débito
+- Controle por Contract ID
+- Estatísticas da banca
+
+### Garantias Arquiteturais
+
+- Ledger imutável
+- Operações atômicas
+- Validação completa antes da alteração do estado
+- Separação entre criação de transações e atualização financeira
+- Apenas o BankrollEngine pode alterar os saldos
+- Snapshot imutável das estatísticas
 
 ### Testes
 
-- Testes automatizados da arquitetura de execução
-- Validação do fluxo de compra
-- Validação de rejeições
-- Validação de encerramento de posição
+Novos testes adicionados:
 
----
+- test_transaction.py
+- test_transaction_factory.py
+- test_statistics.py
+- test_bankroll.py
 
-## 🔄 Alterado
+Resultado da suíte:
 
-- RiskManager
-- StrategyEngine
-- Application
-- Fluxo principal da aplicação
-
----
-
-## 🐛 Corrigido
-
-- Ordem das mensagens no terminal
-- Operações duplicadas
-- Validações de saldo
-- Controle de posição aberta
-
----
-
-## ✅ Testes
-
-```text
-Ran 4 tests
+```
+Ran 234 tests
 
 OK
 ```
 
 ---
 
-# Histórico
+# v0.8.0 — Portfolio Engine
 
-| Versão | Descrição |
-|---------|-----------|
-| 0.1 | Estrutura inicial |
-| 0.2 | Banco SQLite |
-| 0.3 | Integração Binance |
-| 0.4 | Estratégias |
-| 0.5 | EventBus |
-| 0.6 | Risk Manager |
-| **0.7** | **Execution Architecture** |
+## Adicionado
+
+- PortfolioEngine
+- Controle de posições
+- Preço médio
+- Lucro realizado
+- Lucro não realizado
+- Patrimônio
+- Compra
+- Venda parcial
+- Venda total
+- Atualização de preços
+- Controle por ativo
+
+## Garantias
+
+- Apenas PortfolioEngine altera posições
+- PositionManager removido da arquitetura
+
+---
+
+# v0.7.0 — Execution Architecture
+
+## Adicionado
+
+- Execution Engine
+- EventBus
+- Eventos de execução
+- Integração entre módulos
+
+---
+
+# v0.6.0 — Core Trading
+
+## Adicionado
+
+- Performance Engine
+- Risk Manager
+- Strategy Engine
+- Paper Trading
+- Indicadores
+- Repositório de candles
+
+---
+
+# v0.5.0
+
+## Adicionado
+
+- Market Data
+- Binance Client
+- Candle Repository
+
+---
+
+# v0.4.0
+
+## Adicionado
+
+- Estrutura inicial da arquitetura
+- Organização do projeto
+- Primeiros testes
+
+---
+
+# Estatísticas atuais
+
+## Arquitetura
+
+- Clean Architecture
+- SOLID
+- Event Driven Architecture
+- Domain Driven Design (parcial)
+
+## Testes
+
+```
+234 testes
+0 falhas
+100% aprovados
+```
+
+## Componentes implementados
+
+- Event Bus
+- Market Data
+- Candle Repository
+- Indicator Engine
+- Strategy Engine
+- Risk Manager
+- Portfolio Engine
+- Performance Engine
+- Paper Trading Engine
+- Bankroll Engine
+
+---
+
+# Próxima versão
+
+## RFC-005
+
+Execution & Binary Options Integration
+
+Objetivos:
+
+- Integrar RiskManager ao BankrollEngine
+- Reserva automática da stake
+- Liquidação automática WIN/LOSS/DRAW
+- Fluxo financeiro completo
+- Integração com Broker Adapter
+- Conta Demo
+- Preparação para execução real
+
+---
+
+Fim do documento.
