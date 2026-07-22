@@ -1,466 +1,627 @@
 """
-AEGIS - Fixed-Time Contract Domain Entity
+AEGIS - Fixed-Time Contract Domain Entity.
 
-Define a entidade central responsável pelo ciclo de vida de um
-contrato de tempo fixo.
+This module defines the fixed-time contract entity and controls its complete
+domain lifecycle.
+
+A fixed-time contract represents an operation with:
+
+- a predefined stake;
+- a direction, CALL or PUT;
+- a fixed duration;
+- an expected payout;
+- an entry price;
+- an expiration price;
+- a final result.
+
+The entity is responsible only for protecting its own state and validating
+lifecycle transitions. Financial settlement remains the responsibility of the
+BankrollEngine.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
 from src.fixed_time.enums import (
-    ContractResult,
-    ContractStatus,
+    ExecutionMode,
+    FixedTimeContractResult,
+    FixedTimeContractStatus,
     FixedTimeDirection,
-    OperationalMode,
 )
 from src.fixed_time.exceptions import (
-    ContractAlreadySettledError,
-    ContractNotReadyForSettlementError,
-    InvalidContractDirectionError,
-    InvalidContractDurationError,
-    InvalidContractPriceError,
-    InvalidContractTimestampError,
-    InvalidOperationalModeError,
+    FixedTimeContractAlreadySettledError,
+    InvalidFixedTimeContractError,
+    InvalidFixedTimeContractTransitionError,
     InvalidPayoutError,
     InvalidStakeError,
 )
-from src.fixed_time.settlement import FixedTimeSettlementCalculator
-from src.fixed_time.state_machine import FixedTimeContractStateMachine
 
 
 @dataclass(slots=True)
 class FixedTimeContract:
     """
-    Representa um contrato de tempo fixo.
+    Represents a fixed-time trading contract.
 
-    A entidade protege as regras de negócio e coordena seu ciclo
-    de vida utilizando a máquina de estados e o calculador de
-    liquidação do domínio.
+    The contract protects its lifecycle through explicit state transitions.
+
+    Valid primary lifecycle:
+
+        CREATED
+        -> RISK_APPROVED
+        -> STAKE_RESERVED
+        -> SUBMITTED
+        -> ACCEPTED
+        -> ACTIVE
+        -> EXPIRED
+        -> SETTLED
+
+    Alternative terminal states:
+
+        REJECTED
+        CANCELLED
+        FAILED
+
+    Attributes:
+        symbol:
+            Financial instrument traded by the contract.
+
+        direction:
+            Contract direction, CALL or PUT.
+
+        stake:
+            Financial amount committed to the contract.
+
+        payout:
+            Expected payout associated with a winning contract.
+
+        duration:
+            Contract duration in seconds.
+
+        strategy_id:
+            Identifier of the strategy that originated the contract.
+
+        signal_id:
+            Identifier of the signal that originated the contract.
+
+        contract_id:
+            Unique internal contract identifier.
+
+        status:
+            Current lifecycle status.
+
+        result:
+            Final contract result.
+
+        execution_mode:
+            Execution environment: PAPER, DEMO or REAL.
     """
 
     symbol: str
     direction: FixedTimeDirection
     stake: Decimal
     payout: Decimal
-    duration: timedelta
-    mode: OperationalMode = OperationalMode.PAPER
+    duration: int
+    strategy_id: str
+    signal_id: str
 
     contract_id: str = field(
-        default_factory=lambda: str(uuid4())
+        default_factory=lambda: str(uuid4()),
     )
-    external_contract_id: str | None = None
 
-    status: ContractStatus = ContractStatus.CREATED
-    result: ContractResult | None = None
+    status: FixedTimeContractStatus = (
+        FixedTimeContractStatus.CREATED
+    )
+
+    result: FixedTimeContractResult = (
+        FixedTimeContractResult.PENDING
+    )
+
+    execution_mode: ExecutionMode = ExecutionMode.PAPER
 
     created_at: datetime = field(
-        default_factory=lambda: datetime.now(UTC)
+        default_factory=lambda: datetime.now(UTC),
     )
+
+    risk_approved_at: datetime | None = None
+    stake_reserved_at: datetime | None = None
     submitted_at: datetime | None = None
-    opened_at: datetime | None = None
-    expiration_at: datetime | None = None
+    accepted_at: datetime | None = None
+    activated_at: datetime | None = None
     expired_at: datetime | None = None
     settled_at: datetime | None = None
+    rejected_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    failed_at: datetime | None = None
 
+    broker_reference: str | None = None
     entry_price: Decimal | None = None
     expiration_price: Decimal | None = None
 
-    net_profit: Decimal | None = None
-    returned_amount: Decimal | None = None
-
+    rejection_reason: str | None = None
+    cancellation_reason: str | None = None
     failure_reason: str | None = None
 
     def __post_init__(self) -> None:
-        """
-        Valida e normaliza os dados iniciais do contrato.
-        """
-
-        self.symbol = self._normalize_symbol(self.symbol)
-
-        self._validate_direction(self.direction)
-        self._validate_stake(self.stake)
-        self._validate_payout(self.payout)
-        self._validate_duration(self.duration)
-        self._validate_mode(self.mode)
-        self._validate_timezone(self.created_at)
-
-    @staticmethod
-    def _normalize_symbol(symbol: str) -> str:
-        """
-        Normaliza o símbolo do ativo.
-
-        Exemplos:
-            btc/usdt -> BTCUSDT
-            BTC-USDT -> BTCUSDT
-            btc_usdt -> BTCUSDT
-        """
-
-        if not isinstance(symbol, str):
-            raise ValueError(
-                "O símbolo do contrato deve ser uma string."
-            )
-
-        normalized_symbol = (
-            symbol.strip()
-            .upper()
-            .replace("/", "")
-            .replace("-", "")
-            .replace("_", "")
-            .replace(" ", "")
-        )
+        """Validate and normalize the contract after creation."""
+        normalized_symbol = self.symbol.strip().upper()
+        normalized_strategy_id = self.strategy_id.strip()
+        normalized_signal_id = self.signal_id.strip()
 
         if not normalized_symbol:
-            raise ValueError(
-                "O símbolo do contrato não pode estar vazio."
+            raise InvalidFixedTimeContractError(
+                "Contract symbol cannot be empty."
             )
 
-        return normalized_symbol
-
-    @staticmethod
-    def _validate_direction(
-        direction: FixedTimeDirection,
-    ) -> None:
-        """
-        Valida a direção CALL ou PUT.
-        """
-
-        if not isinstance(direction, FixedTimeDirection):
-            raise InvalidContractDirectionError(
-                "A direção deve ser FixedTimeDirection.CALL "
-                "ou FixedTimeDirection.PUT."
-            )
-
-    @staticmethod
-    def _validate_stake(stake: Decimal) -> None:
-        """
-        Valida o valor comprometido na operação.
-        """
-
-        if not isinstance(stake, Decimal):
-            raise InvalidStakeError(
-                "A stake deve utilizar Decimal."
-            )
-
-        if stake <= Decimal("0"):
-            raise InvalidStakeError(
-                "A stake deve ser maior que zero."
-            )
-
-    @staticmethod
-    def _validate_payout(payout: Decimal) -> None:
-        """
-        Valida o payout líquido.
-
-        Exemplo:
-            Decimal("0.80") representa 80%.
-        """
-
-        if not isinstance(payout, Decimal):
-            raise InvalidPayoutError(
-                "O payout deve utilizar Decimal."
-            )
-
-        if payout < Decimal("0") or payout > Decimal("1"):
-            raise InvalidPayoutError(
-                "O payout deve estar entre 0 e 1."
-            )
-
-    @staticmethod
-    def _validate_duration(duration: timedelta) -> None:
-        """
-        Valida a duração do contrato.
-        """
-
-        if not isinstance(duration, timedelta):
-            raise InvalidContractDurationError(
-                "A duração deve utilizar datetime.timedelta."
-            )
-
-        if duration <= timedelta(0):
-            raise InvalidContractDurationError(
-                "A duração deve ser maior que zero."
-            )
-
-    @staticmethod
-    def _validate_mode(mode: OperationalMode) -> None:
-        """
-        Valida o modo operacional.
-        """
-
-        if not isinstance(mode, OperationalMode):
-            raise InvalidOperationalModeError(
-                "O modo deve ser PAPER, DEMO ou REAL."
-            )
-
-    @staticmethod
-    def _validate_timezone(timestamp: datetime) -> None:
-        """
-        Garante que o horário possua timezone explícito.
-        """
-
-        if not isinstance(timestamp, datetime):
-            raise InvalidContractTimestampError(
-                "O timestamp deve utilizar datetime."
-            )
-
-        if (
-            timestamp.tzinfo is None
-            or timestamp.utcoffset() is None
+        if not isinstance(
+            self.direction,
+            FixedTimeDirection,
         ):
-            raise InvalidContractTimestampError(
-                "O timestamp deve possuir timezone explícito."
+            raise InvalidFixedTimeContractError(
+                "Contract direction must be a FixedTimeDirection."
             )
 
-    @staticmethod
-    def _validate_price(
-        price: Decimal,
-        price_name: str,
-    ) -> None:
-        """
-        Valida preços financeiros.
-        """
-
-        if not isinstance(price, Decimal):
-            raise InvalidContractPriceError(
-                f"{price_name} deve utilizar Decimal."
+        if not isinstance(self.stake, Decimal):
+            raise InvalidStakeError(
+                "Contract stake must be a Decimal."
             )
 
-        if price <= Decimal("0"):
-            raise InvalidContractPriceError(
-                f"{price_name} deve ser maior que zero."
+        if self.stake <= Decimal("0"):
+            raise InvalidStakeError(
+                "Contract stake must be greater than zero."
             )
 
-    @staticmethod
-    def _normalize_reason(
-        reason: str,
-        field_name: str,
-    ) -> str:
-        """
-        Valida e normaliza uma justificativa textual.
-        """
-
-        if not isinstance(reason, str):
-            raise ValueError(
-                f"{field_name} deve ser uma string."
+        if not isinstance(self.payout, Decimal):
+            raise InvalidPayoutError(
+                "Contract payout must be a Decimal."
             )
 
-        normalized_reason = reason.strip()
-
-        if not normalized_reason:
-            raise ValueError(
-                f"{field_name} não pode estar vazio."
+        if self.payout <= Decimal("0"):
+            raise InvalidPayoutError(
+                "Contract payout must be greater than zero."
             )
 
-        return normalized_reason
+        if isinstance(self.duration, bool) or not isinstance(
+            self.duration,
+            int,
+        ):
+            raise InvalidFixedTimeContractError(
+                "Contract duration must be an integer."
+            )
 
-    def _transition_to(
-        self,
-        new_status: ContractStatus,
-    ) -> None:
-        """
-        Solicita uma transição à máquina de estados.
-        """
+        if self.duration <= 0:
+            raise InvalidFixedTimeContractError(
+                "Contract duration must be greater than zero."
+            )
 
-        self.status = FixedTimeContractStateMachine.transition(
-            current_status=self.status,
-            new_status=new_status,
+        if not normalized_strategy_id:
+            raise InvalidFixedTimeContractError(
+                "Strategy ID cannot be empty."
+            )
+
+        if not normalized_signal_id:
+            raise InvalidFixedTimeContractError(
+                "Signal ID cannot be empty."
+            )
+
+        if not isinstance(
+            self.execution_mode,
+            ExecutionMode,
+        ):
+            raise InvalidFixedTimeContractError(
+                "Execution mode must be an ExecutionMode."
+            )
+
+        object.__setattr__(
+            self,
+            "symbol",
+            normalized_symbol,
+        )
+        object.__setattr__(
+            self,
+            "strategy_id",
+            normalized_strategy_id,
+        )
+        object.__setattr__(
+            self,
+            "signal_id",
+            normalized_signal_id,
         )
 
-    def submit(
-        self,
-        submitted_at: datetime | None = None,
-    ) -> None:
+    @property
+    def is_terminal(self) -> bool:
+        """Return whether the contract reached a terminal state."""
+        return self.status in {
+            FixedTimeContractStatus.SETTLED,
+            FixedTimeContractStatus.REJECTED,
+            FixedTimeContractStatus.CANCELLED,
+            FixedTimeContractStatus.FAILED,
+        }
+
+    @property
+    def is_pending(self) -> bool:
+        """Return whether the contract result remains pending."""
+        return self.result is FixedTimeContractResult.PENDING
+
+    @property
+    def is_call(self) -> bool:
+        """Return whether the contract direction is CALL."""
+        return self.direction is FixedTimeDirection.CALL
+
+    @property
+    def is_put(self) -> bool:
+        """Return whether the contract direction is PUT."""
+        return self.direction is FixedTimeDirection.PUT
+
+    def approve_risk(self) -> None:
         """
-        Marca o contrato como enviado para execução.
+        Mark the contract as approved by the risk layer.
+
+        Valid transition:
+            CREATED -> RISK_APPROVED
         """
+        self._ensure_status(
+            FixedTimeContractStatus.CREATED,
+        )
 
-        timestamp = submitted_at or datetime.now(UTC)
+        self.status = FixedTimeContractStatus.RISK_APPROVED
+        self.risk_approved_at = datetime.now(UTC)
 
-        self._validate_timezone(timestamp)
-        self._transition_to(ContractStatus.SUBMITTED)
+    def reserve_stake(self) -> None:
+        """
+        Mark the contract stake as reserved.
 
-        self.submitted_at = timestamp
+        Valid transition:
+            RISK_APPROVED -> STAKE_RESERVED
+        """
+        self._ensure_status(
+            FixedTimeContractStatus.RISK_APPROVED,
+        )
 
-    def open(
+        self.status = FixedTimeContractStatus.STAKE_RESERVED
+        self.stake_reserved_at = datetime.now(UTC)
+
+    def submit(self) -> None:
+        """
+        Mark the contract as submitted for execution.
+
+        Valid transition:
+            STAKE_RESERVED -> SUBMITTED
+        """
+        self._ensure_status(
+            FixedTimeContractStatus.STAKE_RESERVED,
+        )
+
+        self.status = FixedTimeContractStatus.SUBMITTED
+        self.submitted_at = datetime.now(UTC)
+
+    def accept(
         self,
+        broker_reference: str,
         entry_price: Decimal,
-        opened_at: datetime | None = None,
-        external_contract_id: str | None = None,
     ) -> None:
         """
-        Confirma que o contrato foi aberto.
+        Mark the contract as accepted by the execution adapter.
+
+        Args:
+            broker_reference:
+                External reference returned by the broker or paper adapter.
+
+            entry_price:
+                Contract entry price.
+
+        Valid transition:
+            SUBMITTED -> ACCEPTED
         """
+        self._ensure_status(
+            FixedTimeContractStatus.SUBMITTED,
+        )
 
-        timestamp = opened_at or datetime.now(UTC)
+        normalized_reference = broker_reference.strip()
 
-        self._validate_price(
+        if not normalized_reference:
+            raise InvalidFixedTimeContractError(
+                "Broker reference cannot be empty."
+            )
+
+        self._validate_positive_price(
             entry_price,
-            "O preço de entrada",
+            "Entry price",
         )
-        self._validate_timezone(timestamp)
 
-        if external_contract_id is not None:
-            external_contract_id = self._normalize_reason(
-                external_contract_id,
-                "O identificador externo",
+        self.broker_reference = normalized_reference
+        self.entry_price = entry_price
+        self.accepted_at = datetime.now(UTC)
+        self.status = FixedTimeContractStatus.ACCEPTED
+
+    def activate(self) -> None:
+        """
+        Mark the accepted contract as active.
+
+        Valid transition:
+            ACCEPTED -> ACTIVE
+        """
+        self._ensure_status(
+            FixedTimeContractStatus.ACCEPTED,
+        )
+
+        if self.broker_reference is None:
+            raise InvalidFixedTimeContractError(
+                "An accepted contract must have a broker reference."
             )
 
-        self._transition_to(ContractStatus.OPEN)
+        if self.entry_price is None:
+            raise InvalidFixedTimeContractError(
+                "An accepted contract must have an entry price."
+            )
 
-        self.entry_price = entry_price
-        self.opened_at = timestamp
-        self.expiration_at = timestamp + self.duration
-        self.external_contract_id = external_contract_id
+        self.status = FixedTimeContractStatus.ACTIVE
+        self.activated_at = datetime.now(UTC)
 
-    def mark_expired(
+    def expire(
         self,
-        expired_at: datetime | None = None,
+        expiration_price: Decimal,
     ) -> None:
         """
-        Marca que o horário de expiração foi atingido.
+        Mark the active contract as expired.
+
+        Args:
+            expiration_price:
+                Market price observed when the contract expired.
+
+        Valid transition:
+            ACTIVE -> EXPIRED
         """
-
-        timestamp = expired_at or datetime.now(UTC)
-
-        self._validate_timezone(timestamp)
-
-        if self.expiration_at is None:
-            raise InvalidContractTimestampError(
-                "O contrato não possui horário de expiração."
-            )
-
-        if timestamp < self.expiration_at:
-            raise InvalidContractTimestampError(
-                "O contrato não pode expirar antes do horário previsto."
-            )
-
-        self._transition_to(ContractStatus.EXPIRED)
-
-        self.expired_at = timestamp
-
-    def reject(self, reason: str) -> None:
-        """
-        Registra a rejeição do contrato.
-        """
-
-        normalized_reason = self._normalize_reason(
-            reason,
-            "O motivo da rejeição",
+        self._ensure_status(
+            FixedTimeContractStatus.ACTIVE,
         )
 
-        self._transition_to(ContractStatus.REJECTED)
+        self._validate_positive_price(
+            expiration_price,
+            "Expiration price",
+        )
 
-        self.failure_reason = normalized_reason
+        self.expiration_price = expiration_price
+        self.expired_at = datetime.now(UTC)
+        self.status = FixedTimeContractStatus.EXPIRED
+
+    def settle(
+        self,
+        result: FixedTimeContractResult,
+    ) -> None:
+        """
+        Settle an expired contract.
+
+        Args:
+            result:
+                Final result of the contract.
+
+        Valid transition:
+            EXPIRED -> SETTLED
+        """
+        if self.status is FixedTimeContractStatus.SETTLED:
+            raise FixedTimeContractAlreadySettledError(
+                f"Contract {self.contract_id} is already settled."
+            )
+
+        self._ensure_status(
+            FixedTimeContractStatus.EXPIRED,
+        )
+
+        if not isinstance(
+            result,
+            FixedTimeContractResult,
+        ):
+            raise InvalidFixedTimeContractError(
+                "Settlement result must be a "
+                "FixedTimeContractResult."
+            )
+
+        if result in {
+            FixedTimeContractResult.PENDING,
+            FixedTimeContractResult.CANCELLED,
+            FixedTimeContractResult.UNKNOWN,
+        }:
+            raise InvalidFixedTimeContractError(
+                "A settled contract must have WIN, LOSS or DRAW "
+                "as its final result."
+            )
+
+        self.result = result
+        self.settled_at = datetime.now(UTC)
+        self.status = FixedTimeContractStatus.SETTLED
+
+    def reject(
+        self,
+        reason: str | None = None,
+    ) -> None:
+        """
+        Reject a contract before it becomes accepted.
+
+        Rejection is permitted while the operation is still being
+        evaluated, reserved or submitted.
+        """
+        allowed_statuses = {
+            FixedTimeContractStatus.CREATED,
+            FixedTimeContractStatus.RISK_APPROVED,
+            FixedTimeContractStatus.STAKE_RESERVED,
+            FixedTimeContractStatus.SUBMITTED,
+        }
+
+        self._ensure_status_in(
+            allowed_statuses,
+            target_status=FixedTimeContractStatus.REJECTED,
+        )
+
+        self.rejection_reason = self._normalize_optional_reason(
+            reason,
+        )
+        self.rejected_at = datetime.now(UTC)
+        self.status = FixedTimeContractStatus.REJECTED
 
     def cancel(
         self,
         reason: str | None = None,
     ) -> None:
         """
-        Cancela um contrato que ainda não foi aberto.
+        Cancel an accepted or active contract.
+
+        Cancellation does not perform financial operations. The
+        TradeLifecycleCoordinator and BankrollEngine are responsible for
+        releasing or reconciling reserved funds.
         """
+        allowed_statuses = {
+            FixedTimeContractStatus.ACCEPTED,
+            FixedTimeContractStatus.ACTIVE,
+        }
 
-        normalized_reason: str | None = None
-
-        if reason is not None:
-            normalized_reason = self._normalize_reason(
-                reason,
-                "O motivo do cancelamento",
-            )
-
-        self._transition_to(ContractStatus.CANCELLED)
-
-        self.failure_reason = normalized_reason
-
-    def fail(self, reason: str) -> None:
-        """
-        Registra uma falha técnica.
-
-        Uma falha técnica não representa automaticamente uma perda.
-        """
-
-        normalized_reason = self._normalize_reason(
-            reason,
-            "O motivo da falha",
+        self._ensure_status_in(
+            allowed_statuses,
+            target_status=FixedTimeContractStatus.CANCELLED,
         )
 
-        self._transition_to(ContractStatus.FAILED)
-
-        self.failure_reason = normalized_reason
-
-    def mark_unknown(self, reason: str) -> None:
-        """
-        Marca o contrato como incerto.
-
-        Utilizado quando a solicitação foi enviada, mas a plataforma
-        não confirmou claramente o estado da operação.
-        """
-
-        normalized_reason = self._normalize_reason(
+        self.cancellation_reason = self._normalize_optional_reason(
             reason,
-            "O motivo da incerteza",
         )
+        self.cancelled_at = datetime.now(UTC)
+        self.result = FixedTimeContractResult.CANCELLED
+        self.status = FixedTimeContractStatus.CANCELLED
 
-        self._transition_to(ContractStatus.UNKNOWN)
-
-        self.failure_reason = normalized_reason
-
-    def begin_reconciliation(self) -> None:
-        """
-        Inicia a reconciliação de um contrato incerto ou com falha.
-        """
-
-        self._transition_to(ContractStatus.RECONCILING)
-
-    def settle(
+    def fail(
         self,
-        expiration_price: Decimal,
-        settled_at: datetime | None = None,
-    ) -> ContractResult:
+        reason: str,
+    ) -> None:
         """
-        Liquida o contrato e registra seu resultado financeiro.
-        """
+        Mark a non-terminal contract as failed.
 
-        if self.status == ContractStatus.SETTLED:
-            raise ContractAlreadySettledError(
-                "O contrato já foi liquidado."
+        A terminal contract cannot later be converted into FAILED.
+        """
+        if self.is_terminal:
+            raise InvalidFixedTimeContractTransitionError(
+                "A terminal contract cannot transition to FAILED."
             )
 
-        if self.status != ContractStatus.EXPIRED:
-            raise ContractNotReadyForSettlementError(
-                "Somente contratos expirados podem ser liquidados."
+        normalized_reason = reason.strip()
+
+        if not normalized_reason:
+            raise InvalidFixedTimeContractError(
+                "Failure reason cannot be empty."
             )
 
+        self.failure_reason = normalized_reason
+        self.failed_at = datetime.now(UTC)
+        self.status = FixedTimeContractStatus.FAILED
+
+    def determine_result(
+        self,
+    ) -> FixedTimeContractResult:
+        """
+        Determine the expected result from entry and expiration prices.
+
+        This method calculates the result but does not settle the contract.
+
+        Returns:
+            WIN, LOSS or DRAW.
+
+        Raises:
+            InvalidFixedTimeContractError:
+                When the required prices are unavailable.
+        """
         if self.entry_price is None:
-            raise ContractNotReadyForSettlementError(
-                "O contrato não possui preço de entrada."
+            raise InvalidFixedTimeContractError(
+                "Entry price is required to determine the result."
             )
 
-        timestamp = settled_at or datetime.now(UTC)
+        if self.expiration_price is None:
+            raise InvalidFixedTimeContractError(
+                "Expiration price is required to determine the result."
+            )
 
-        self._validate_price(
-            expiration_price,
-            "O preço de expiração",
-        )
-        self._validate_timezone(timestamp)
+        if self.expiration_price == self.entry_price:
+            return FixedTimeContractResult.DRAW
 
-        calculation = FixedTimeSettlementCalculator.calculate(
-            direction=self.direction,
-            stake=self.stake,
-            payout=self.payout,
-            entry_price=self.entry_price,
-            expiration_price=expiration_price,
-        )
+        if self.direction is FixedTimeDirection.CALL:
+            if self.expiration_price > self.entry_price:
+                return FixedTimeContractResult.WIN
 
-        self._transition_to(ContractStatus.SETTLED)
+            return FixedTimeContractResult.LOSS
 
-        self.expiration_price = expiration_price
-        self.result = calculation.result
-        self.net_profit = calculation.net_profit
-        self.returned_amount = calculation.returned_amount
-        self.settled_at = timestamp
+        if self.expiration_price < self.entry_price:
+            return FixedTimeContractResult.WIN
 
-        return calculation.result
+        return FixedTimeContractResult.LOSS
+
+    def _ensure_status(
+        self,
+        expected_status: FixedTimeContractStatus,
+    ) -> None:
+        """
+        Ensure the contract is currently in the expected status.
+
+        Raises:
+            InvalidFixedTimeContractTransitionError:
+                When the current status does not match the expected status.
+        """
+        if self.status is not expected_status:
+            raise InvalidFixedTimeContractTransitionError(
+                "Invalid fixed-time contract transition: "
+                f"expected status {expected_status.value}, "
+                f"but current status is {self.status.value}."
+            )
+
+    def _ensure_status_in(
+        self,
+        allowed_statuses: set[FixedTimeContractStatus],
+        target_status: FixedTimeContractStatus,
+    ) -> None:
+        """
+        Ensure the current status belongs to a set of allowed statuses.
+        """
+        if self.status not in allowed_statuses:
+            allowed_values = ", ".join(
+                sorted(
+                    status.value
+                    for status in allowed_statuses
+                )
+            )
+
+            raise InvalidFixedTimeContractTransitionError(
+                "Invalid fixed-time contract transition: "
+                f"{self.status.value} cannot transition to "
+                f"{target_status.value}. Allowed source statuses: "
+                f"{allowed_values}."
+            )
+
+    @staticmethod
+    def _validate_positive_price(
+        price: Decimal,
+        field_name: str,
+    ) -> None:
+        """Validate a positive Decimal price."""
+        if not isinstance(price, Decimal):
+            raise InvalidFixedTimeContractError(
+                f"{field_name} must be a Decimal."
+            )
+
+        if price <= Decimal("0"):
+            raise InvalidFixedTimeContractError(
+                f"{field_name} must be greater than zero."
+            )
+
+    @staticmethod
+    def _normalize_optional_reason(
+        reason: str | None,
+    ) -> str | None:
+        """Normalize an optional lifecycle reason."""
+        if reason is None:
+            return None
+
+        normalized_reason = reason.strip()
+
+        if not normalized_reason:
+            return None
+
+        return normalized_reason

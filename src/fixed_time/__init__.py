@@ -1,56 +1,95 @@
 """
-AEGIS - Fixed-Time Contract Domain
+AEGIS - Fixed-Time Domain Package.
 
-Expõe os principais componentes públicos do domínio de contratos
-de tempo fixo.
+This package exposes the public API of the Fixed-Time domain,
+including entities, value objects, enums, exceptions and services.
 """
 
 from src.fixed_time.contract import FixedTimeContract
 from src.fixed_time.enums import (
-    ContractResult,
-    ContractStatus,
+    ExecutionMode,
+    FixedTimeContractResult,
+    FixedTimeContractStatus,
     FixedTimeDirection,
-    OperationalMode,
 )
 from src.fixed_time.exceptions import (
-    ContractAlreadySettledError,
-    ContractNotReadyForSettlementError,
-    FixedTimeContractError,
+    BrokerOperationRejectedError,
+    ContractAlreadyAcceptedError,
+    ContractAlreadyCancelledError,
+    ContractAlreadyExpiredError,
+    ContractAlreadyRejectedError,
+    ContractAlreadySubmittedError,
+    ContractLifecycleError,
+    DuplicateBrokerReferenceError,
+    DuplicateFixedTimeContractError,
+    FixedTimeContractAlreadySettledError,
+    FixedTimeContractNotFoundError,
+    FixedTimeContractReconciliationRequiredError,
+    FixedTimeContractResultError,
+    FixedTimeContractSubmissionError,
+    FixedTimeError,
     InvalidContractDirectionError,
-    InvalidContractDurationError,
     InvalidContractPriceError,
-    InvalidContractStateError,
-    InvalidContractTimestampError,
-    InvalidOperationalModeError,
+    InvalidDirectionError,
+    InvalidExecutionModeError,
+    InvalidExpirationError,
+    InvalidFixedTimeContractError,
+    InvalidFixedTimeContractTransitionError,
     InvalidPayoutError,
     InvalidStakeError,
+    InvalidTradeIntentError,
+    RiskApprovalRequiredError,
+    StakeReservationError,
 )
 from src.fixed_time.settlement import (
     FixedTimeSettlementCalculator,
     SettlementCalculation,
 )
-from src.fixed_time.state_machine import (
-    FixedTimeContractStateMachine,
-)
+from src.fixed_time.trade_intent import TradeIntent
+
+# -------------------------------------------------------------------------
+# Backward compatibility aliases
+# -------------------------------------------------------------------------
+
+ContractStatus = FixedTimeContractStatus
+ContractResult = FixedTimeContractResult
 
 __all__ = [
-    "ContractAlreadySettledError",
-    "ContractNotReadyForSettlementError",
+    "BrokerOperationRejectedError",
+    "ContractAlreadyAcceptedError",
+    "ContractAlreadyCancelledError",
+    "ContractAlreadyExpiredError",
+    "ContractAlreadyRejectedError",
+    "ContractAlreadySubmittedError",
+    "ContractLifecycleError",
     "ContractResult",
     "ContractStatus",
+    "DuplicateBrokerReferenceError",
+    "DuplicateFixedTimeContractError",
+    "ExecutionMode",
     "FixedTimeContract",
-    "FixedTimeContractError",
-    "FixedTimeContractStateMachine",
+    "FixedTimeContractAlreadySettledError",
+    "FixedTimeContractNotFoundError",
+    "FixedTimeContractReconciliationRequiredError",
+    "FixedTimeContractResult",
+    "FixedTimeContractResultError",
+    "FixedTimeContractStatus",
+    "FixedTimeContractSubmissionError",
     "FixedTimeDirection",
+    "FixedTimeError",
     "FixedTimeSettlementCalculator",
+    "SettlementCalculation",
     "InvalidContractDirectionError",
-    "InvalidContractDurationError",
     "InvalidContractPriceError",
-    "InvalidContractStateError",
-    "InvalidContractTimestampError",
-    "InvalidOperationalModeError",
+    "InvalidDirectionError",
+    "InvalidExecutionModeError",
+    "InvalidExpirationError",
+    "InvalidFixedTimeContractError",
+    "InvalidFixedTimeContractTransitionError",
     "InvalidPayoutError",
     "InvalidStakeError",
-    "OperationalMode",
-    "SettlementCalculation",
+    "InvalidTradeIntentError",
+    "RiskApprovalRequiredError",
+    "StakeReservationError",
+    "TradeIntent",
 ]

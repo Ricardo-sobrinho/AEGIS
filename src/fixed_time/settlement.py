@@ -1,15 +1,21 @@
 """
-AEGIS - Fixed-Time Contract Settlement
+AEGIS - Fixed-Time Contract Settlement.
 
-Define as regras de determinação de resultado e cálculo financeiro
-dos contratos de tempo fixo.
+Defines the operational result determination and the financial
+calculation rules for fixed-time contracts.
+
+This module performs pure calculations only. It does not reserve,
+credit, debit or otherwise modify the bankroll. Financial state
+changes remain the exclusive responsibility of BankrollEngine.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
 
 from src.fixed_time.enums import (
-    ContractResult,
+    FixedTimeContractResult,
     FixedTimeDirection,
 )
 from src.fixed_time.exceptions import (
@@ -23,19 +29,53 @@ from src.fixed_time.exceptions import (
 @dataclass(frozen=True, slots=True)
 class SettlementCalculation:
     """
-    Representa o resultado financeiro calculado para um contrato.
+    Immutable financial calculation for a fixed-time contract.
+
+    Attributes:
+        result:
+            Operational result of the contract: WIN, LOSS or DRAW.
+
+        net_profit:
+            Net financial result produced by the contract.
+
+            WIN:
+                Positive profit equal to stake multiplied by payout.
+
+            LOSS:
+                Negative amount equal to the entire stake.
+
+            DRAW:
+                Zero profit or loss.
+
+        returned_amount:
+            Total amount that must be returned to the bankroll.
+
+            WIN:
+                Original stake plus net profit.
+
+            LOSS:
+                Zero.
+
+            DRAW:
+                Original stake.
     """
 
-    result: ContractResult
+    result: FixedTimeContractResult
     net_profit: Decimal
     returned_amount: Decimal
 
 
 class FixedTimeSettlementCalculator:
     """
-    Calcula o resultado operacional e financeiro de um contrato
-    de tempo fixo.
+    Calculates the operational and financial result of a contract.
+
+    This service is stateless and does not mutate contract or bankroll
+    objects. It can therefore be safely used by the future
+    TradeLifecycleCoordinator during contract settlement.
     """
+
+    _ZERO = Decimal("0")
+    _ONE = Decimal("1")
 
     @classmethod
     def calculate(
@@ -47,44 +87,54 @@ class FixedTimeSettlementCalculator:
         expiration_price: Decimal,
     ) -> SettlementCalculation:
         """
-        Determina o resultado e calcula seus valores financeiros.
+        Determine the result and calculate the financial amounts.
 
         Args:
             direction:
-                Direção CALL ou PUT do contrato.
+                Contract direction, CALL or PUT.
+
             stake:
-                Valor comprometido na operação.
+                Amount committed to the contract.
+
             payout:
-                Percentual líquido de lucro em caso de vitória.
-                Exemplo: Decimal("0.80") representa 80%.
+                Net profit percentage for a winning contract.
+
+                Example:
+                    Decimal("0.80") represents an 80% net payout.
+
             entry_price:
-                Preço do ativo no início do contrato.
+                Market price when the contract became active.
+
             expiration_price:
-                Preço do ativo no encerramento do contrato.
+                Market price when the contract expired.
 
         Returns:
-            Um objeto SettlementCalculation contendo resultado,
-            lucro líquido e valor devolvido.
+            An immutable SettlementCalculation containing the result,
+            net profit and returned amount.
 
         Raises:
             InvalidContractDirectionError:
-                Quando a direção não é válida.
-            InvalidStakeError:
-                Quando a stake não utiliza Decimal ou não é positiva.
-            InvalidPayoutError:
-                Quando o payout não utiliza Decimal ou está fora
-                do intervalo permitido.
-            InvalidContractPriceError:
-                Quando algum preço é inválido.
-        """
+                If direction is not a FixedTimeDirection.
 
+            InvalidStakeError:
+                If stake is not Decimal or is not positive.
+
+            InvalidPayoutError:
+                If payout is not Decimal or is outside the valid range.
+
+            InvalidContractPriceError:
+                If entry or expiration price is invalid.
+        """
         cls._validate_direction(direction)
         cls._validate_stake(stake)
         cls._validate_payout(payout)
-        cls._validate_price(entry_price, "O preço de entrada")
+        cls._validate_price(
+            entry_price,
+            "Entry price",
+        )
         cls._validate_price(
             expiration_price,
-            "O preço de expiração",
+            "Expiration price",
         )
 
         result = cls.determine_result(
@@ -93,10 +143,12 @@ class FixedTimeSettlementCalculator:
             expiration_price=expiration_price,
         )
 
-        net_profit, returned_amount = cls.calculate_financial_result(
-            result=result,
-            stake=stake,
-            payout=payout,
+        net_profit, returned_amount = (
+            cls.calculate_financial_result(
+                result=result,
+                stake=stake,
+                payout=payout,
+            )
         )
 
         return SettlementCalculation(
@@ -105,130 +157,187 @@ class FixedTimeSettlementCalculator:
             returned_amount=returned_amount,
         )
 
-    @staticmethod
+    @classmethod
     def determine_result(
+        cls,
         direction: FixedTimeDirection,
         entry_price: Decimal,
         expiration_price: Decimal,
-    ) -> ContractResult:
+    ) -> FixedTimeContractResult:
         """
-        Determina se o contrato terminou em WIN, LOSS ou DRAW.
-        """
+        Determine whether the contract ended in WIN, LOSS or DRAW.
 
-        FixedTimeSettlementCalculator._validate_direction(direction)
-        FixedTimeSettlementCalculator._validate_price(
+        CALL:
+            WIN when expiration price is greater than entry price.
+
+        PUT:
+            WIN when expiration price is lower than entry price.
+
+        DRAW:
+            Entry and expiration prices are equal.
+        """
+        cls._validate_direction(direction)
+        cls._validate_price(
             entry_price,
-            "O preço de entrada",
+            "Entry price",
         )
-        FixedTimeSettlementCalculator._validate_price(
+        cls._validate_price(
             expiration_price,
-            "O preço de expiração",
+            "Expiration price",
         )
 
         if expiration_price == entry_price:
-            return ContractResult.DRAW
+            return FixedTimeContractResult.DRAW
 
-        if direction == FixedTimeDirection.CALL:
+        if direction is FixedTimeDirection.CALL:
             if expiration_price > entry_price:
-                return ContractResult.WIN
+                return FixedTimeContractResult.WIN
 
-            return ContractResult.LOSS
+            return FixedTimeContractResult.LOSS
 
         if expiration_price < entry_price:
-            return ContractResult.WIN
+            return FixedTimeContractResult.WIN
 
-        return ContractResult.LOSS
+        return FixedTimeContractResult.LOSS
 
-    @staticmethod
+    @classmethod
     def calculate_financial_result(
-        result: ContractResult,
+        cls,
+        result: FixedTimeContractResult,
         stake: Decimal,
         payout: Decimal,
     ) -> tuple[Decimal, Decimal]:
         """
-        Calcula o lucro líquido e o valor devolvido ao saldo.
+        Calculate net profit and the amount returned to the bankroll.
+
+        Args:
+            result:
+                Final contract result.
+
+            stake:
+                Amount committed to the contract.
+
+            payout:
+                Net winning percentage.
+
+        Returns:
+            A tuple containing:
+
+            - net profit;
+            - returned amount.
+
+        Raises:
+            ValueError:
+                If result is not a FixedTimeContractResult or is not a
+                financially settleable result.
         """
+        cls._validate_stake(stake)
+        cls._validate_payout(payout)
 
-        FixedTimeSettlementCalculator._validate_stake(stake)
-        FixedTimeSettlementCalculator._validate_payout(payout)
-
-        if not isinstance(result, ContractResult):
+        if not isinstance(
+            result,
+            FixedTimeContractResult,
+        ):
             raise ValueError(
-                "O resultado deve ser uma instância de ContractResult."
+                "Result must be a FixedTimeContractResult instance."
             )
 
-        if result == ContractResult.WIN:
+        if result is FixedTimeContractResult.WIN:
             net_profit = stake * payout
             returned_amount = stake + net_profit
 
             return net_profit, returned_amount
 
-        if result == ContractResult.LOSS:
-            return -stake, Decimal("0")
+        if result is FixedTimeContractResult.LOSS:
+            return -stake, cls._ZERO
 
-        return Decimal("0"), stake
+        if result is FixedTimeContractResult.DRAW:
+            return cls._ZERO, stake
+
+        raise ValueError(
+            "Financial settlement only accepts WIN, LOSS or DRAW."
+        )
 
     @staticmethod
     def _validate_direction(
         direction: FixedTimeDirection,
     ) -> None:
-        """
-        Valida a direção do contrato.
-        """
-
-        if not isinstance(direction, FixedTimeDirection):
+        """Validate the fixed-time contract direction."""
+        if not isinstance(
+            direction,
+            FixedTimeDirection,
+        ):
             raise InvalidContractDirectionError(
-                "A direção deve ser FixedTimeDirection.CALL "
-                "ou FixedTimeDirection.PUT."
+                "Direction must be FixedTimeDirection.CALL "
+                "or FixedTimeDirection.PUT."
             )
 
-    @staticmethod
-    def _validate_stake(stake: Decimal) -> None:
-        """
-        Valida a stake do contrato.
-        """
-
+    @classmethod
+    def _validate_stake(
+        cls,
+        stake: Decimal,
+    ) -> None:
+        """Validate a positive Decimal stake."""
         if not isinstance(stake, Decimal):
             raise InvalidStakeError(
-                "A stake deve utilizar Decimal."
+                "Stake must use Decimal."
             )
 
-        if stake <= Decimal("0"):
+        if not stake.is_finite():
             raise InvalidStakeError(
-                "A stake deve ser maior que zero."
+                "Stake must be a finite Decimal."
             )
 
-    @staticmethod
-    def _validate_payout(payout: Decimal) -> None:
-        """
-        Valida o payout líquido.
-        """
+        if stake <= cls._ZERO:
+            raise InvalidStakeError(
+                "Stake must be greater than zero."
+            )
 
+    @classmethod
+    def _validate_payout(
+        cls,
+        payout: Decimal,
+    ) -> None:
+        """
+        Validate the net payout percentage.
+
+        Valid payout range:
+            Greater than zero and less than or equal to one.
+        """
         if not isinstance(payout, Decimal):
             raise InvalidPayoutError(
-                "O payout deve utilizar Decimal."
+                "Payout must use Decimal."
             )
 
-        if payout < Decimal("0") or payout > Decimal("1"):
+        if not payout.is_finite():
             raise InvalidPayoutError(
-                "O payout deve estar entre 0 e 1."
+                "Payout must be a finite Decimal."
             )
 
-    @staticmethod
+        if payout <= cls._ZERO or payout > cls._ONE:
+            raise InvalidPayoutError(
+                "Payout must be greater than zero "
+                "and less than or equal to one."
+            )
+
+    @classmethod
     def _validate_price(
+        cls,
         price: Decimal,
         price_name: str,
     ) -> None:
-        """
-        Valida um preço financeiro.
-        """
-
+        """Validate a positive and finite Decimal price."""
         if not isinstance(price, Decimal):
             raise InvalidContractPriceError(
-                f"{price_name} deve utilizar Decimal."
+                f"{price_name} must use Decimal."
             )
 
-        if price <= Decimal("0"):
+        if not price.is_finite():
             raise InvalidContractPriceError(
-                f"{price_name} deve ser maior que zero."
+                f"{price_name} must be finite."
+            )
+
+        if price <= cls._ZERO:
+            raise InvalidContractPriceError(
+                f"{price_name} must be greater than zero."
             )

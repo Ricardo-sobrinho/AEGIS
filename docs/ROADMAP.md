@@ -354,4 +354,4 @@ Versão atual
 
 Status
 
-**RFC-004 concluída — Projeto preparado para iniciar a RFC-005.**
+**RFC-004 concluída — Projeto preparado para iniciar a RFC-005.**git add .
