@@ -1,398 +1,435 @@
-# AEGIS — PROJECT CHECKPOINT
+# AEGIS – PROJECT CHECKPOINT
 
-**Adaptive Evolutionary Global Intelligence System**
-
----
-
-# Status do Projeto
-
-| Item | Status |
-|------|--------|
-| Projeto | Em Desenvolvimento |
-| Versão | v0.9.0 |
-| RFC Atual | RFC-004 Concluída |
-| Próxima RFC | RFC-005 |
-| Linguagem | Python 3.13 |
-| Arquitetura | Clean Architecture |
-| Estilo | Event Driven |
-| Testes | 234 aprovados |
+**Project:** Adaptive Evolutionary Global Intelligence System (AEGIS)
 
 ---
 
-# Objetivo do Projeto
+# Project Information
 
-A AEGIS é uma plataforma profissional de negociação algorítmica desenvolvida para operar inicialmente contratos de tempo fixo (Binary Options), mantendo uma arquitetura suficientemente flexível para suportar outros mercados no futuro, como:
-
-- Criptomoedas
-- Forex
-- Índices
-- Commodities
-- ETFs
-- Ações
-
-Toda a arquitetura foi projetada para permitir evolução contínua sem necessidade de grandes refatorações.
-
----
-
-# Princípios Arquiteturais
-
-O projeto segue rigorosamente os seguintes princípios:
-
-- SOLID
-- Clean Architecture
-- Event Driven Architecture
-- Baixo acoplamento
-- Alta coesão
-- Imutabilidade sempre que possível
-- Responsabilidade única
-- Código testável
-- Separação entre domínio e infraestrutura
+| Item | Value |
+|------|-------|
+| Current Version | **v0.9.0-alpha.5** |
+| Project Status | RFC-006 In Progress (Documentation & Closure) |
+| Last Completed RFC | RFC-005 – Fixed-Time Contract Domain |
+| Next RFC | RFC-007 – Fixed Time Risk Engine |
+| Last Update | 21/07/2026 |
+| Language | Python 3.13 |
+| Architecture | Clean Architecture + SOLID + Event Driven Architecture |
 
 ---
 
-# Fluxo Atual da Aplicação
+# Project Vision
+
+AEGIS is a long-term production-grade Artificial Intelligence platform focused on automated Fixed-Time Trading (Binary Options).
+
+The platform is designed to evolve incrementally while maintaining:
+
+- modularity;
+- scalability;
+- security;
+- maintainability;
+- auditability;
+- deterministic behavior;
+- high test coverage.
+
+Every architectural decision is documented through RFCs before implementation.
+
+---
+
+# Development Workflow
+
+Every implementation must follow the official engineering workflow:
 
 ```
-Market Data
-      │
-      ▼
-Indicator Engine
-      │
-      ▼
+Architecture
+        ↓
+RFC
+        ↓
+Implementation
+        ↓
+Tests
+        ↓
+Documentation
+        ↓
+Git Commit
+        ↓
+Versioning
+```
+
+No implementation may bypass this process.
+
+---
+
+# Current Development Phase
+
+## Current RFC
+
+RFC-006 — Trade Lifecycle Coordinator
+
+### Current Status
+
+Infrastructure implemented.
+
+Pending:
+
+- documentation update;
+- full test execution;
+- final validation;
+- git commit;
+- version tag.
+
+After RFC-006 is officially closed, development will continue with RFC-007.
+
+---
+
+# Project Architecture
+
+Current logical flow:
+
+```
 Strategy Engine
-      │
-      ▼
-Risk Manager
-      │
-      ▼
-Execution Engine
-      │
-      ▼
-Portfolio Engine
-      │
-      ▼
-Performance Engine
+        │
+        ▼
+TradeIntent
+        │
+        ▼
+TradeLifecycleCoordinator
+        │
+        ├──────────────► RiskHandler
+        │
+        ├──────────────► BankrollHandler
+        │
+        ├──────────────► ExecutionHandler
+        │
+        ├──────────────► SettlementHandler
+        │
+        └──────────────► PerformanceHandler
 ```
+
+Each handler is responsible only for orchestration.
+
+Business rules belong to specialized domain components.
 
 ---
 
-# Fluxo Planejado (RFC-005)
-
-```
-Market Data
-      │
-      ▼
-Indicator Engine
-      │
-      ▼
-Strategy Engine
-      │
-      ▼
-Risk Manager
-      │
-      ▼
-Bankroll Engine
-      │
-      ▼
-Execution Engine
-      │
-      ▼
-Broker Adapter
-      │
-      ▼
-Resultado
-(WIN / LOSS / DRAW)
-      │
-      ▼
-Bankroll Engine
-      │
-      ▼
-Portfolio Engine
-      │
-      ▼
-Performance Engine
-```
-
----
-
-# Módulos Implementados
+# Implemented Modules
 
 ## Core
 
 - EventBus
-- Eventos de domínio
-- Arquitetura modular
+- Configuration
+- Logging
+- Exceptions
 
-### Market
+---
 
-- Binance Market Client
+## Market
+
+- Market Client
 - Candle Repository
+- Candle Events
 
-### Indicators
+---
 
+## Indicators
+
+- Indicator Engine
 - SMA
 
-### Strategy
+---
+
+## Strategy
 
 - Strategy Engine
-
-### Risk
-
-- Risk Manager
-
-### Portfolio
-
-- Portfolio Engine
-- Position
-- Controle de posições
-- Preço médio
-- Lucro realizado
-- Lucro não realizado
-
-### Performance
-
-- Performance Engine
-
-### Paper Trading
-
-- Simulação completa de operações
-
-### Bankroll
-
-- Bankroll Engine
-- Ledger financeiro
-- Estatísticas
-- Factory
-- Reserva de stake
-- Liquidação
-- Controle financeiro
+- Signal Generation
 
 ---
-
-# RFCs Concluídas
-
-## RFC-001
-
-Arquitetura Base
-
-Status:
-
-Concluída
-
----
-
-## RFC-002
-
-Portfolio Engine
-
-Status:
-
-Concluída
-
----
-
-## RFC-003
-
-Performance Analytics
-
-Status:
-
-Concluída
-
----
-
-## RFC-004
-
-Bankroll Engine
-
-Status:
-
-Concluída
-
----
-
-# Estatísticas do Projeto
-
-## Arquivos
-
-- Múltiplos módulos organizados por domínio
-- Estrutura baseada em pacotes Python
-
-## Testes
-
-```
-234 testes
-
-0 falhas
-
-100% aprovados
-```
-
----
-
-# Garantias Arquiteturais
 
 ## Portfolio
 
-Somente o PortfolioEngine pode:
+- Portfolio
+- Portfolio Engine
 
-- abrir posição
-- fechar posição
-- alterar posição
-- atualizar preço médio
-- calcular lucro realizado
+---
+
+## Performance
+
+- Performance Engine
+
+---
+
+## Paper Trading
+
+- Execution Engine
+
+---
+
+## Risk
+
+Legacy Risk Manager
+
+(Currently used only by the legacy trading flow.)
 
 ---
 
 ## Bankroll
 
-Somente o BankrollEngine pode:
-
-- alterar saldo disponível
-- alterar saldo reservado
-- registrar movimentações
-- liquidar operações
-- controlar ledger financeiro
+- BankrollEngine
+- Transaction Factory
+- Transaction Ledger
+- Statistics
+- Position Sizing Support
 
 ---
 
-## Ledger
+## Fixed-Time Domain
 
-- Imutável
-- Somente leitura
-- Histórico permanente
+Implemented:
 
----
-
-## Estatísticas
-
-Snapshots somente leitura.
-
-Nunca alteram o estado do sistema.
+- TradeIntent
+- FixedTimeContract
+- Settlement Calculator
+- Settlement Calculation
+- Domain Exceptions
+- Lifecycle Validation
+- Result Determination
 
 ---
 
-# Estrutura Geral
+## Coordinator
+
+Implemented:
+
+- TradeLifecycleCoordinator
+- Base Handler
+- TradeEventHandler
+- RiskHandler (Infrastructure)
+- Coordinator Tests
+
+---
+
+# Fixed-Time Contract Lifecycle
 
 ```
-src/
-
-    market/
-
-    indicators/
-
-    strategy/
-
-    risk/
-
-    portfolio/
-
-    bankroll/
-
-    execution/
-
-    performance/
-
-    paper_trading/
-
-    infrastructure/
+CREATED
+        │
+        ▼
+RISK_APPROVED
+        │
+        ▼
+STAKE_RESERVED
+        │
+        ▼
+SUBMITTED
+        │
+        ▼
+ACCEPTED
+        │
+        ▼
+ACTIVE
+        │
+        ▼
+EXPIRED
+        │
+        ▼
+SETTLED
 ```
 
----
+Alternative terminal states:
 
-# Tecnologias
+```
+REJECTED
 
-- Python 3.13
-- unittest
-- dataclasses
-- Decimal
-- UUID
-- Event Bus
-- Type Hints
+CANCELLED
 
----
+FAILED
+```
 
-# Estado Atual
+The lifecycle is fully protected by the FixedTimeContract entity.
 
-Implementado:
-
-- Arquitetura Base
-- Market Data
-- Indicadores
-- Estratégias
-- Gestão de risco
-- Portfolio
-- Performance
-- Paper Trading
-- Bankroll
-
-Todos os componentes encontram-se integrados e com testes aprovados.
+No external component may modify contract state directly.
 
 ---
 
-# Próxima Etapa
+# Completed RFCs
 
-## RFC-005
+| RFC | Status |
+|------|--------|
+| RFC-001 | Completed |
+| RFC-002 | Completed |
+| RFC-003 | Completed |
+| RFC-004 | Completed |
+| RFC-005 | Completed |
 
-Execution & Binary Options Integration
+RFC-006 is currently in closure.
 
-Objetivos:
+---
 
-- integração do RiskManager ao Bankroll
-- reserva automática de stake
-- liquidação WIN
-- liquidação LOSS
-- liquidação DRAW
+# Permanent Architectural Decisions
+
+These decisions are considered stable and must not be changed without a new RFC.
+
+---
+
+## FixedTimeContract
+
+The FixedTimeContract is the single authority responsible for contract lifecycle.
+
+The former FixedTimeContractStateMachine has been permanently removed.
+
+---
+
+## BankrollEngine
+
+BankrollEngine is the only component allowed to:
+
+- reserve stake;
+- release stake;
+- settle contracts;
+- modify balances;
+- record financial transactions.
+
+No other component may change financial state.
+
+---
+
+## TradeLifecycleCoordinator
+
+The coordinator performs orchestration only.
+
+It must never contain business rules.
+
+---
+
+## Handlers
+
+Handlers coordinate execution.
+
+They delegate all business logic to domain/application services.
+
+---
+
+## Risk
+
+The legacy RiskManager remains preserved.
+
+A new FixedTimeRiskManager will be introduced in RFC-007.
+
+Legacy BUY/SELL concepts must never be reused for Fixed-Time Contracts.
+
+---
+
+## Portfolio
+
+PortfolioEngine never manages Fixed-Time Contracts.
+
+---
+
+## Settlement
+
+SettlementCalculator performs only mathematical settlement calculations.
+
+Financial settlement belongs exclusively to BankrollEngine.
+
+---
+
+# Current Test Status
+
+Latest execution:
+
+```text
+Ran 267 tests
+
+OK
+```
+
+Current status:
+
+- 267 tests
+- 0 failures
+- 0 errors
+
+Project integrity validated.
+
+---
+
+# Technical Debt
+
+Current assessment:
+
+- Low
+
+Known pending work:
+
+- Fixed-Time Risk Engine
+- Coordinator integration
+- Broker Adapter abstraction
+- Demo Trading
+- Real Trading
+
+---
+
+# Next Milestones
+
+## RFC-007
+
+Fixed Time Risk Engine
+
+Objectives:
+
+- independent risk engine;
+- immutable policy;
+- immutable request;
+- immutable decision;
+- stateless evaluation;
+- Fixed-Time specific rules.
+
+---
+
+Future milestones:
+
 - Broker Adapter
-- Conta Demo
-- fluxo financeiro completo
+- Demo Trading
+- Real Trading
+- Performance Analytics
+- Reinforcement Learning
+- AI Optimization
+- Multi-Asset Support
 
 ---
 
-# Processo Oficial de Desenvolvimento
+# Resume Instructions
 
-Toda funcionalidade deverá seguir obrigatoriamente o seguinte fluxo:
+When continuing development in a new conversation:
 
-1. Arquitetura
-2. RFC
-3. Implementação
-4. Testes
-5. Documentação
-6. Revisão Técnica
-7. Git Commit
-8. Versionamento
-9. Checkpoint
-
-Nenhuma RFC será considerada concluída sem que todas as etapas acima tenham sido executadas.
+1. Read this PROJECT_CHECKPOINT.md.
+2. Read the latest RFC documents.
+3. Continue from the current version.
+4. Preserve all architectural decisions.
+5. Never reintroduce deprecated components.
+6. Always deliver complete source files.
+7. Keep all tests passing.
+8. Follow the official development workflow.
 
 ---
 
-# Visão de Longo Prazo
+# Current Project Health
 
-A AEGIS evoluirá para uma plataforma inteligente capaz de:
-
-- operar automaticamente
-- analisar múltiplos mercados
-- executar estratégias simultâneas
-- aprender continuamente
-- integrar múltiplas corretoras
-- suportar múltiplos ativos
-- incorporar modelos de IA e Machine Learning em versões futuras
-
----
-
-# Próximo Marco
-
-**RFC-005 — Execution & Binary Options Integration**
-
-Objetivo:
-
-Conectar o fluxo operacional ao fluxo financeiro, permitindo que cada operação realizada percorra todo o ciclo de vida da negociação, desde a geração do sinal até a liquidação financeira da operação.
+| Area | Status |
+|------|--------|
+| Architecture | Stable |
+| Code Quality | High |
+| Technical Debt | Low |
+| Documentation | Up to date |
+| Automated Tests | Passing |
+| Governance | Active |
 
 ---
 
-**Última atualização:** Julho/2026
+# Official Continuity Statement
 
-**Versão do projeto:** v0.9.0
+This document is the official engineering checkpoint of the AEGIS project.
 
-**Status:** RFC-004 concluída • 234 testes aprovados.
+Every new development cycle must begin by reviewing this file together with the latest approved RFCs.
+
+Its purpose is to preserve architectural consistency, governance, and long-term continuity throughout the evolution of the AEGIS platform.

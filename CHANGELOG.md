@@ -1,27 +1,208 @@
 # CHANGELOG
 
-Todas as mudanças relevantes do projeto AEGIS serão documentadas neste arquivo.
+Todas as mudanças relevantes da AEGIS (Adaptive Evolutionary Global Intelligence System) são registradas neste documento.
 
-O versionamento segue o conceito de evolução incremental da arquitetura do sistema, utilizando RFCs (Request for Comments) para registrar decisões técnicas importantes.
-
----
-
-# Versionamento
-
-- Status Atual: **v0.9.0**
-- Arquitetura: Clean Architecture + SOLID + Event Driven Architecture
-- Linguagem: Python 3.13
-- Status: Em Desenvolvimento
+O projeto adota evolução incremental baseada em RFCs (Request for Comments), garantindo rastreabilidade das decisões arquiteturais, implementações e marcos de desenvolvimento.
 
 ---
 
-# v0.9.0 — RFC-004 Bankroll Engine
+# Informações do Projeto
 
-Data: Julho/2026
+| Item | Valor |
+|------|--------|
+| Projeto | AEGIS |
+| Arquitetura | Clean Architecture + SOLID + Event Driven Architecture |
+| Linguagem | Python 3.13 |
+| Status | Em desenvolvimento |
+| Versão atual | **v0.9.0-alpha.5** |
+| Próxima RFC | RFC-006 – Trade Lifecycle Coordinator |
+
+---
+
+# Histórico de Versões
+
+---
+
+# v0.9.0-alpha.5
+
+**Data:** Julho/2026
+
+**Status:** RFC-005 Finalizada
 
 ## Objetivo
 
-Implementar um módulo financeiro desacoplado responsável pelo gerenciamento da banca da AEGIS para operações de contratos de tempo fixo (Binary Options), mantendo todo o fluxo financeiro centralizado em um único agregado.
+Implementar completamente o domínio responsável pelos contratos de tempo fixo (Fixed-Time Contracts), tornando a entidade `FixedTimeContract` a única autoridade sobre o ciclo de vida dos contratos.
+
+---
+
+## Adicionado
+
+### Domínio Fixed-Time
+
+- FixedTimeContract
+- FixedTimeSettlementCalculator
+- SettlementCalculation
+
+---
+
+### Ciclo de Vida
+
+Implementadas todas as transições de estado protegidas:
+
+- approve_risk()
+- reserve_stake()
+- submit()
+- accept()
+- activate()
+- expire()
+- settle()
+- reject()
+- cancel()
+- fail()
+
+---
+
+### Estados
+
+Implementados:
+
+- CREATED
+- RISK_APPROVED
+- STAKE_RESERVED
+- SUBMITTED
+- ACCEPTED
+- ACTIVE
+- EXPIRED
+- SETTLED
+- REJECTED
+- CANCELLED
+- FAILED
+
+---
+
+### Validações
+
+Implementadas validações completas para:
+
+- símbolo
+- stake
+- payout
+- duração
+- direction
+- strategy_id
+- signal_id
+- execution_mode
+- broker_reference
+- entry_price
+- expiration_price
+
+---
+
+### Resultado Financeiro
+
+Implementado:
+
+- determine_result()
+
+Suporte para:
+
+- WIN
+- LOSS
+- DRAW
+
+---
+
+### Settlement
+
+Implementado:
+
+- cálculo financeiro do contrato
+- retorno líquido
+- lucro
+- prejuízo
+- draw
+
+---
+
+### Exceções
+
+Criadas exceções específicas:
+
+- InvalidFixedTimeContractError
+- InvalidFixedTimeContractTransitionError
+- FixedTimeContractAlreadySettledError
+- InvalidStakeError
+- InvalidPayoutError
+- InvalidContractDirectionError
+- InvalidContractPriceError
+
+---
+
+## Arquitetura
+
+Removido definitivamente:
+
+- FixedTimeContractStateMachine
+
+A entidade `FixedTimeContract` passa a ser responsável por todo o ciclo de vida do contrato.
+
+---
+
+## Compatibilidade
+
+Atualizado:
+
+```
+src/fixed_time/__init__.py
+```
+
+Mantidos aliases públicos para preservar compatibilidade.
+
+---
+
+## Testes
+
+Nova suíte de testes para:
+
+- ciclo completo
+- transições válidas
+- transições inválidas
+- estados terminais
+- dupla liquidação
+- dupla ativação
+- dupla aceitação
+- dupla submissão
+- cálculo de resultado
+
+Resultado:
+
+```text
+Ran 267 tests
+
+OK
+```
+
+---
+
+## Próxima Etapa
+
+RFC-006
+
+Trade Lifecycle Coordinator
+
+---
+
+# v0.9.0
+
+**Data:** Julho/2026
+
+**Status:** RFC-004 Finalizada
+
+## Objetivo
+
+Implementar um módulo financeiro desacoplado responsável pelo gerenciamento completo da banca da AEGIS.
+
+---
 
 ## Adicionado
 
@@ -32,44 +213,38 @@ Implementar um módulo financeiro desacoplado responsável pelo gerenciamento da
 - BankrollTransaction
 - BankrollTransactionFactory
 
+---
+
 ### Funcionalidades
 
-- Controle de saldo disponível
-- Controle de saldo reservado
-- Ledger financeiro imutável
-- Reserva de stake
-- Liberação de stake
-- Liquidação WIN
-- Liquidação LOSS
-- Liquidação DRAW
-- Depósitos
-- Saques
-- Ajustes de crédito
-- Ajustes de débito
-- Controle por Contract ID
-- Estatísticas da banca
+- saldo disponível
+- saldo reservado
+- ledger financeiro
+- reserva de stake
+- liberação de stake
+- liquidação WIN
+- liquidação LOSS
+- liquidação DRAW
+- depósitos
+- saques
+- ajustes financeiros
+- controle por Contract ID
+- estatísticas
 
-### Garantias Arquiteturais
+---
+
+## Garantias
 
 - Ledger imutável
 - Operações atômicas
-- Validação completa antes da alteração do estado
-- Separação entre criação de transações e atualização financeira
-- Apenas o BankrollEngine pode alterar os saldos
-- Snapshot imutável das estatísticas
+- Apenas BankrollEngine altera saldos
+- Snapshot imutável
 
-### Testes
+---
 
-Novos testes adicionados:
+## Testes
 
-- test_transaction.py
-- test_transaction_factory.py
-- test_statistics.py
-- test_bankroll.py
-
-Resultado da suíte:
-
-```
+```text
 Ran 234 tests
 
 OK
@@ -77,74 +252,83 @@ OK
 
 ---
 
-# v0.8.0 — Portfolio Engine
+# v0.8.0
 
-## Adicionado
+## RFC-002
+
+Portfolio Engine
+
+### Adicionado
 
 - PortfolioEngine
-- Controle de posições
-- Preço médio
-- Lucro realizado
-- Lucro não realizado
-- Patrimônio
-- Compra
-- Venda parcial
-- Venda total
-- Atualização de preços
-- Controle por ativo
+- controle de posições
+- preço médio
+- lucro realizado
+- lucro não realizado
+- patrimônio
+- compra
+- venda parcial
+- venda total
+- atualização de preços
 
-## Garantias
+### Garantias
 
+- PositionManager removido
 - Apenas PortfolioEngine altera posições
-- PositionManager removido da arquitetura
 
 ---
 
-# v0.7.0 — Execution Architecture
+# v0.7.0
 
-## Adicionado
+## RFC-001
+
+Execution Architecture
+
+### Adicionado
 
 - Execution Engine
 - EventBus
-- Eventos de execução
+- Eventos
 - Integração entre módulos
 
 ---
 
-# v0.6.0 — Core Trading
+# v0.6.0
 
-## Adicionado
+Core Trading
+
+### Adicionado
 
 - Performance Engine
 - Risk Manager
 - Strategy Engine
-- Paper Trading
-- Indicadores
-- Repositório de candles
+- Paper Trading Engine
+- Indicator Engine
+- Candle Repository
 
 ---
 
 # v0.5.0
 
-## Adicionado
+### Adicionado
 
-- Market Data
 - Binance Client
+- Market Data
 - Candle Repository
 
 ---
 
 # v0.4.0
 
-## Adicionado
+### Adicionado
 
-- Estrutura inicial da arquitetura
-- Organização do projeto
+- Estrutura inicial do projeto
+- Organização da arquitetura
 - Primeiros testes
 
 ---
 
-# Estatísticas atuais
+# Estatísticas Atuais
 
 ## Arquitetura
 
@@ -153,44 +337,46 @@ OK
 - Event Driven Architecture
 - Domain Driven Design (parcial)
 
-## Testes
+---
 
-```
-234 testes
-0 falhas
-100% aprovados
-```
-
-## Componentes implementados
+## Componentes Implementados
 
 - Event Bus
 - Market Data
 - Candle Repository
 - Indicator Engine
 - Strategy Engine
-- Risk Manager
+- Risk Manager (Legado)
 - Portfolio Engine
 - Performance Engine
 - Paper Trading Engine
 - Bankroll Engine
+- Fixed-Time Contract Domain
 
 ---
 
-# Próxima versão
+## Testes
 
-## RFC-005
+```text
+267 testes
+0 falhas
+100% aprovados
+```
 
-Execution & Binary Options Integration
+---
+
+# Próximo Marco
+
+## RFC-006
+
+Trade Lifecycle Coordinator
 
 Objetivos:
 
-- Integrar RiskManager ao BankrollEngine
-- Reserva automática da stake
-- Liquidação automática WIN/LOSS/DRAW
-- Fluxo financeiro completo
-- Integração com Broker Adapter
-- Conta Demo
-- Preparação para execução real
+- coordenar o ciclo completo da operação;
+- integrar handlers especializados;
+- desacoplar o fluxo de execução;
+- preparar integração com o novo motor de risco.
 
 ---
 

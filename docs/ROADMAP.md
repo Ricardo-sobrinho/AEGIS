@@ -1,357 +1,341 @@
-# AEGIS ROADMAP
+# AEGIS – ROADMAP
 
-**Adaptive Evolutionary Global Intelligence System**
-
----
-
-# Visão Geral
-
-Este roadmap descreve a evolução planejada da AEGIS desde a fundação da arquitetura até sua operação em ambiente de produção.
-
-O desenvolvimento segue rigorosamente o processo oficial do projeto:
-
-1. Arquitetura
-2. RFC
-3. Implementação
-4. Testes
-5. Documentação
-6. Revisão Técnica
-7. Git Commit
-8. Versionamento
-9. Checkpoint
-
-Nenhuma etapa é considerada concluída antes da finalização de todas essas fases.
+**Project:** Adaptive Evolutionary Global Intelligence System (AEGIS)
 
 ---
 
-# STATUS DAS FASES
+# Project Information
 
-Legenda
+| Item | Value |
+|------|-------|
+| Current Version | **v0.9.0-alpha.5** |
+| Current Status | RFC-006 In Progress (Documentation & Closure) |
+| Next RFC | RFC-007 – Fixed Time Risk Engine |
+| Language | Python 3.13 |
+| Architecture | Clean Architecture + SOLID + Event Driven Architecture |
+
+---
+
+# Project Vision
+
+The AEGIS project aims to become a production-grade Artificial Intelligence platform capable of autonomously operating Fixed-Time Contracts (Binary Options) through a modular, secure, scalable and continuously evolving architecture.
+
+The long-term vision extends beyond Fixed-Time Contracts, allowing future expansion to additional financial markets without architectural redesign.
+
+---
+
+# Development Strategy
+
+The project evolves incrementally through approved RFCs.
+
+Every new feature follows the official engineering workflow:
 
 ```
-✅ Concluído
-🚧 Em desenvolvimento
-⏳ Planejado
+Architecture
+        ↓
+RFC
+        ↓
+Implementation
+        ↓
+Tests
+        ↓
+Documentation
+        ↓
+Git Commit
+        ↓
+Versioning
 ```
 
----
-
-# FASE 1 — FOUNDATION
-
-Status: ✅ Concluído
-
-## Arquitetura
-
-- ✅ Estrutura inicial do projeto
-- ✅ Organização dos pacotes
-- ✅ Clean Architecture
-- ✅ SOLID
-- ✅ Event Driven Architecture
-- ✅ Tipagem completa
-- ✅ Dataclasses
-- ✅ Python 3.13
+No implementation bypasses this process.
 
 ---
 
-# FASE 2 — CORE TRADING
-
-Status: ✅ Concluído
-
-## Market Data
-
-- ✅ Binance Market Client
-- ✅ Candle Repository
-- ✅ Eventos de mercado
-
-## Indicators
-
-- ✅ SMA
-
-## Strategy
-
-- ✅ Strategy Engine
-
-## Risk
-
-- ✅ Risk Manager
-
-## Portfolio
-
-- ✅ Portfolio Engine
-- ✅ Controle de posições
-- ✅ Compra
-- ✅ Venda
-- ✅ Preço médio
-- ✅ Lucro realizado
-- ✅ Lucro não realizado
-
-## Performance
-
-- ✅ Performance Engine
-
-## Paper Trading
-
-- ✅ Simulação completa
+# Development Phases
 
 ---
 
-# FASE 3 — BANKROLL
+# Phase 1 — Core Platform
 
-Status: ✅ Concluído
+Goal:
 
-## Transaction
+Build the complete technical foundation of AEGIS.
 
-- ✅ BankrollTransaction
+Current RFCs:
 
-## Factory
+| RFC | Status |
+|------|--------|
+| RFC-001 | Completed |
+| RFC-002 | Completed |
+| RFC-003 | Completed |
+| RFC-004 | Completed |
+| RFC-005 | Completed |
+| RFC-006 | In Closure |
 
-- ✅ BankrollTransactionFactory
+Deliverables:
 
-## Statistics
-
-- ✅ BankrollStatistics
-
-## Engine
-
-- ✅ BankrollEngine
-
-### Funcionalidades
-
-- ✅ Depósitos
-- ✅ Saques
-- ✅ Reserva de Stake
-- ✅ Liberação de Stake
-- ✅ Liquidação WIN
-- ✅ Liquidação LOSS
-- ✅ Liquidação DRAW
-- ✅ Ledger Financeiro
-- ✅ Controle por Contract ID
-- ✅ Snapshot Estatístico
+- Core Architecture
+- EventBus
+- Strategy Engine
+- Portfolio Engine
+- Performance Engine
+- Bankroll Engine
+- Fixed-Time Domain
+- Trade Lifecycle Coordinator
 
 ---
 
-# FASE 4 — EXECUTION INTEGRATION
+# Phase 2 — Trading Core
 
-Status: 🚧 Próxima RFC
+Goal:
 
-## RFC-005
+Complete the operational trading pipeline.
 
-Execution & Binary Options Integration
-
-Objetivos
-
-- 🚧 Integrar RiskManager ao BankrollEngine
-- 🚧 Reserva automática de stake
-- 🚧 Liquidação automática
-- 🚧 Fluxo financeiro completo
-- 🚧 Integração entre ExecutionEngine e BankrollEngine
-- 🚧 Atualização automática do Portfolio
-- 🚧 Atualização automática da Performance
+Planned RFCs
 
 ---
 
-# FASE 5 — BINARY OPTIONS ENGINE
+## RFC-007
 
-Status: ⏳ Planejado
+Fixed Time Risk Engine
 
-## Domínio
+Objectives:
 
-- ⏳ Contratos de Tempo Fixo
-- ⏳ CALL
-- ⏳ PUT
-- ⏳ Expiração
-- ⏳ Payout
-- ⏳ Resultado WIN
-- ⏳ Resultado LOSS
-- ⏳ Resultado DRAW
-
-## Gestão
-
-- ⏳ Controle de Stake
-- ⏳ Gestão financeira
-- ⏳ Ciclo completo da operação
+- Stateless risk engine
+- Immutable policy
+- Immutable request
+- Immutable decision
+- Exposure validation
+- Stake validation
+- Payout validation
+- Active contract validation
 
 ---
 
-# FASE 6 — BROKER INTEGRATION
+## RFC-008
 
-Status: ⏳ Planejado
+Execution Adapter
 
-## Adaptadores
+Objectives:
 
-- ⏳ Broker Adapter
-- ⏳ Conta Demo
-- ⏳ Conta Real
-- ⏳ Reconexão automática
-- ⏳ Monitoramento de ordens
-
----
-
-# FASE 7 — INTELIGÊNCIA ARTIFICIAL
-
-Status: ⏳ Planejado
-
-## Machine Learning
-
-- ⏳ Treinamento supervisionado
-- ⏳ Seleção automática de modelos
-- ⏳ Feature Engineering
-
-## Reinforcement Learning
-
-- ⏳ Ambiente de treinamento
-- ⏳ Agente
-- ⏳ Política
-- ⏳ Reward Function
-
-## Evolução
-
-- ⏳ Auto Optimization
-- ⏳ Aprendizado contínuo
-- ⏳ Adaptação ao mercado
+- Broker abstraction
+- Generic execution interface
+- Provider independence
+- Retry policies
+- Execution events
 
 ---
 
-# FASE 8 — MULTI ASSET
+## RFC-009
 
-Status: ⏳ Planejado
+Demo Trading
 
-Mercados suportados
+Objectives:
 
-- ⏳ Criptomoedas
-- ⏳ Forex
-- ⏳ Índices
-- ⏳ Commodities
-- ⏳ ETFs
-- ⏳ Ações
+- Complete paper execution
+- Demo broker integration
+- End-to-end workflow
+- Trading simulation
 
 ---
 
-# FASE 9 — MULTI BROKER
+# Phase 3 — Production Trading
 
-Status: ⏳ Planejado
+Objectives:
 
-- ⏳ Binance
-- ⏳ Corretora para contratos de tempo fixo (API oficial)
-- ⏳ Seleção dinâmica de adaptadores
-- ⏳ Failover entre corretoras
-
----
-
-# FASE 10 — OBSERVABILIDADE
-
-Status: ⏳ Planejado
-
-- ⏳ Logging estruturado
-- ⏳ Auditoria
-- ⏳ Métricas
-- ⏳ Dashboard
-- ⏳ Alertas
+- Official Broker Integration
+- Real Trading
+- Secure Credential Management
+- Order Monitoring
+- Execution Recovery
+- Audit Trail
 
 ---
 
-# FASE 11 — PRODUÇÃO
+# Phase 4 — Analytics & Intelligence
 
-Status: ⏳ Planejado
+Objectives:
 
-- ⏳ Ambiente de Produção
-- ⏳ Deploy automatizado
-- ⏳ Configuração segura
-- ⏳ Backup
-- ⏳ Monitoramento
-- ⏳ Recuperação de falhas
-
----
-
-# Estatísticas Atuais
-
-Versão
-
-```
-v0.9.0
-```
-
-RFCs concluídas
-
-```
-RFC-001
-RFC-002
-RFC-003
-RFC-004
-```
-
-Testes
-
-```
-234 testes
-
-0 falhas
-
-100% aprovados
-```
-
-Arquitetura
-
-- Clean Architecture
-- SOLID
-- Event Driven Architecture
+- Advanced Performance Analytics
+- Strategy Comparison
+- Portfolio Statistics
+- Explainable Decisions
+- Historical Analysis
 
 ---
 
-# Próximo Marco
+# Phase 5 — Artificial Intelligence
 
-## RFC-005
+Objectives:
 
-Execution & Binary Options Integration
-
-Objetivo
-
-Integrar definitivamente o fluxo operacional ao fluxo financeiro, permitindo que cada operação percorra todas as etapas do ciclo de vida:
-
-```
-Market Data
-        │
-        ▼
-Indicator Engine
-        │
-        ▼
-Strategy Engine
-        │
-        ▼
-Risk Manager
-        │
-        ▼
-Bankroll Engine
-        │
-        ▼
-Execution Engine
-        │
-        ▼
-Broker Adapter
-        │
-        ▼
-Resultado
-        │
-        ▼
-Bankroll Engine
-        │
-        ▼
-Portfolio Engine
-        │
-        ▼
-Performance Engine
-```
+- Machine Learning
+- Reinforcement Learning
+- Strategy Optimization
+- Adaptive Models
+- Self Evaluation
+- Continuous Improvement
 
 ---
 
-Última atualização
+# Phase 6 — Enterprise Platform
 
-Julho/2026
+Objectives:
 
-Versão atual
+- Multi Broker
+- Multi Account
+- Distributed Execution
+- Cloud Deployment
+- High Availability
+- Horizontal Scaling
 
-**v0.9.0**
+---
 
-Status
+# Release Targets
 
-**RFC-004 concluída — Projeto preparado para iniciar a RFC-005.**git add .
+---
+
+## v0.9.x
+
+Focus:
+
+Complete the technical foundation.
+
+Expected deliverables:
+
+- Coordinator
+- Fixed-Time Risk Engine
+- Execution Adapter
+- Demo Trading
+- Full Integration
+- Stable Internal APIs
+
+---
+
+## v1.0
+
+First Production Candidate
+
+Goals:
+
+- Complete trading pipeline
+- Demo account
+- Stable architecture
+- Automated testing
+- Documentation completed
+- Production-ready architecture
+
+---
+
+## v2.x
+
+Artificial Intelligence
+
+Goals:
+
+- Machine Learning
+- Reinforcement Learning
+- Strategy optimization
+- Adaptive trading
+
+---
+
+## v3.x
+
+Enterprise Evolution
+
+Goals:
+
+- Cloud Native
+- Distributed Architecture
+- Multi Broker
+- Multi Asset
+- High Availability
+
+---
+
+# Long-Term Vision
+
+Future supported markets:
+
+- Fixed-Time Contracts (Primary)
+- Forex
+- Cryptocurrency
+- Indices
+- Commodities
+- Stocks
+- ETFs
+
+Future capabilities:
+
+- Multi Broker
+- Multi Asset
+- Explainable AI
+- Autonomous Strategy Generation
+- Adaptive Risk
+- Distributed Execution
+- Continuous Learning
+
+---
+
+# Current Priorities
+
+Immediate priorities:
+
+1. Close RFC-006
+2. Implement RFC-007
+3. Complete Execution Adapter
+4. Complete Demo Trading
+5. Validate End-to-End Workflow
+
+No new modules should be started before the current RFC is officially closed.
+
+---
+
+# Success Criteria
+
+The project will reach Version 1.0 when all of the following are complete:
+
+- Coordinator fully operational
+- Fixed-Time Risk Engine implemented
+- Bankroll fully integrated
+- Execution Adapter completed
+- Demo Trading completed
+- End-to-end automated workflow
+- Stable public interfaces
+- Complete documentation
+- High automated test coverage
+- Zero critical architectural debt
+
+---
+
+# Current Project Health
+
+| Area | Status |
+|------|--------|
+| Architecture | Stable |
+| Code Quality | High |
+| Technical Debt | Low |
+| Automated Tests | Passing |
+| Documentation | Active |
+| Governance | Active |
+
+---
+
+# Roadmap Maintenance
+
+This roadmap is a living document.
+
+Each completed RFC must update:
+
+- CHANGELOG.md
+- PROJECT_CHECKPOINT.md
+- ROADMAP.md
+
+The roadmap should always reflect the strategic direction of the project while preserving long-term architectural consistency.
+
+---
+
+# Official Statement
+
+AEGIS is designed as a long-term software engineering project.
+
+The objective is not only to create a trading system, but to build an extensible Artificial Intelligence platform capable of evolving safely through disciplined architecture, rigorous governance and continuous improvement.
